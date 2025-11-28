@@ -464,14 +464,30 @@ app.get('/api/matches', async (req, res) => {
 });
 
 // ... (이메일 인증, 로그인, 회원가입 등 기존 코드는 유지) ...
+// [수정됨] 이메일 발송 API (에러 로그 출력 기능 추가)
 app.post('/api/auth/send-email', async (req, res) => {
     const { email } = req.body;
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    verificationStore[email] = code; 
-    const mailOptions = { from: EMAIL_USER, to: email, subject: '[SportBet] 인증번호', text: `인증번호: ${code}` };
-    try { await transporter.sendMail(mailOptions); res.json({ success: true }); } catch (e) { res.status(500).json({ success: false }); }
-});
+    verificationStore[email] = code;
+    
+    console.log(`📨 [System] 메일 발송 시도: ${email}`); // 시작 로그
 
+    try { 
+        await transporter.sendMail({ 
+            from: EMAIL_USER, 
+            to: email, 
+            subject: '[SportBet] 인증번호', 
+            text: `인증번호: ${code}` 
+        }); 
+        
+        console.log(`✅ [System] 메일 전송 성공!`); // 성공 로그
+        res.json({ success: true }); 
+    } catch (e) { 
+        // ★ 여기가 핵심! 에러가 나면 상세 내용을 로그에 찍습니다.
+        console.error('❌ [Error] 메일 전송 실패 원인:', e); 
+        res.status(500).json({ success: false, message: '전송 실패' }); 
+    }
+});
 app.post('/api/auth/verify-email', (req, res) => {
     const { email, code } = req.body;
     if (verificationStore[email] === code) { delete verificationStore[email]; res.json({ success: true }); } 
