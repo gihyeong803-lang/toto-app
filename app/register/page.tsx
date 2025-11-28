@@ -36,8 +36,8 @@ export default function RegisterPage() {
     if (formData.userid.length < 4) return alert('아이디는 4글자 이상이어야 합니다.');
 
     try {
-      // ★ 여기가 수정되었습니다: /api -> http://localhost:4000/api
-      const res = await fetch('http://localhost:4000/api/check/id', {
+      // ★ 여기가 수정되었습니다: /api -> https://toto-server-f4j2.onrender.com/api
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/check/id', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userid: formData.userid }),
@@ -71,7 +71,7 @@ export default function RegisterPage() {
 
     try {
       // ★ 수정됨: 4000번 포트 명시
-      const res = await fetch('http://localhost:4000/api/check/nickname', {
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/check/nickname', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname: formData.nickname }),
@@ -97,7 +97,7 @@ export default function RegisterPage() {
     setIsLoading(true);
     try {
       // ★ 수정됨
-      const res = await fetch('http://localhost:4000/api/auth/send-email', {
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/auth/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email }),
@@ -124,7 +124,7 @@ export default function RegisterPage() {
 
     try {
       // ★ 수정됨
-      const res = await fetch('http://localhost:4000/api/auth/verify-email', {
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email, code: verificationCode }),
@@ -166,7 +166,7 @@ export default function RegisterPage() {
 
     try {
       // ★ 수정됨: 4000번 포트로 가입 요청
-      const res = await fetch('http://localhost:4000/api/auth/register', {
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

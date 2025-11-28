@@ -24,7 +24,7 @@ export default function ChargePage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/api/charge/request', {
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/charge/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userid: currentUserId, amount }),

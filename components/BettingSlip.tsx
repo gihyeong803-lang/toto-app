@@ -79,7 +79,7 @@ export default function BettingSlip() {
 
     try {
         // ★ API 주소는 본인 환경에 맞게 수정 (localhost 또는 IP)
-        const res = await fetch('http://192.168.0.4:4000/api/bet', {
+        const res = await fetch('https://toto-server-f4j2.onrender.com/api/bet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

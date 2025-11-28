@@ -80,7 +80,7 @@ export default function AdminPage() {
 
   const fetchData = () => {
     if (!user) return;
-    const API_BASE = 'http://localhost:4000'; 
+    const API_BASE = 'https://toto-server-f4j2.onrender.com'; 
     const adminQuery = `?userid=${(user as any).userid}`;
 
     if (activeTab === 'MATCHES') fetch(`${API_BASE}/api/matches`).then(r => r.json()).then(setMatches);
@@ -110,7 +110,7 @@ export default function AdminPage() {
     if(!confirm(`[경기 종료 확인]\n\n${homeName} ${homeScore} : ${awayScore} ${awayName}\n\n이 결과로 확정하고 당첨자에게 머니를 지급하시겠습니까?`)) return;
     
     try {
-        const res = await fetch('http://localhost:4000/api/admin/settle', {
+        const res = await fetch('https://toto-server-f4j2.onrender.com/api/admin/settle', {
             method: 'POST', 
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ matchId, homeScore, awayScore })
@@ -132,7 +132,7 @@ export default function AdminPage() {
     if(!confirm('경기를 "경기 전(0:0)" 상태로 초기화하시겠습니까?\n(이미 지급된 머니는 회수되지 않습니다)')) return;
     
     try {
-        await fetch('http://localhost:4000/api/admin/reset-match', {
+        await fetch('https://toto-server-f4j2.onrender.com/api/admin/reset-match', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ matchId })
@@ -148,7 +148,7 @@ export default function AdminPage() {
   const giveMoney = async (userId: string) => {
     const amount = prompt('💰 지급할 금액을 입력하세요:');
     if (!amount) return;
-    await fetch('http://localhost:4000/api/admin/give-money', {
+    await fetch('https://toto-server-f4j2.onrender.com/api/admin/give-money', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ userId, amount })
     });
@@ -158,7 +158,7 @@ export default function AdminPage() {
   const takeMoney = async (userId: string) => {
     const amount = prompt('💸 환수할(뺏을) 금액을 입력하세요:');
     if (!amount) return;
-    await fetch('http://localhost:4000/api/admin/take-money', {
+    await fetch('https://toto-server-f4j2.onrender.com/api/admin/take-money', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ userId, amount })
     });
@@ -168,7 +168,7 @@ export default function AdminPage() {
   // --- [기능] 충전/환전 승인 ---
   const approveCharge = async (chargeId: string) => {
     if (!confirm('입금 확인 하셨습니까? 승인하시겠습니까?')) return;
-    await fetch('http://localhost:4000/api/admin/approve-charge', {
+    await fetch('https://toto-server-f4j2.onrender.com/api/admin/approve-charge', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ chargeId })
     });
@@ -177,7 +177,7 @@ export default function AdminPage() {
 
   const approveExchange = async (exchangeId: string) => {
     if (!confirm('송금 완료 하셨습니까?')) return;
-    await fetch('http://localhost:4000/api/admin/approve-exchange', {
+    await fetch('https://toto-server-f4j2.onrender.com/api/admin/approve-exchange', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ exchangeId })
     });

@@ -16,7 +16,7 @@ export default function Header() {
     const checkMoney = async () => {
       try {
         // 방금 server.js에 만든 그 주소로 요청
-        const res = await fetch('http://localhost:4000/api/user/refresh', {
+        const res = await fetch('https://toto-server-f4j2.onrender.com/api/user/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userid: (user as any).userid }),

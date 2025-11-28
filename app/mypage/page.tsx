@@ -114,7 +114,7 @@ export default function MyPage() {
           return;
         }
 
-        const userRes = await fetch('http://192.168.0.4:4000/api/user/refresh', {
+        const userRes = await fetch('https://toto-server-f4j2.onrender.com/api/user/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userid: currentUserId }),
@@ -136,12 +136,12 @@ export default function MyPage() {
             return;
         }
 
-        const betRes = await fetch(`http://192.168.0.4:4000/api/my-bets?userid=${currentUserId}&t=${Date.now()}`, {
+        const betRes = await fetch(`https://toto-server-f4j2.onrender.com/api/my-bets?userid=${currentUserId}&t=${Date.now()}`, {
             cache: 'no-store'
         });
         const betData = await betRes.json();
 
-        const matchRes = await fetch(`http://192.168.0.4:4000/api/matches?t=${Date.now()}`, {
+        const matchRes = await fetch(`https://toto-server-f4j2.onrender.com/api/matches?t=${Date.now()}`, {
             cache: 'no-store'
         });
         const matchData = await matchRes.json();
@@ -165,7 +165,7 @@ export default function MyPage() {
     try {
         const currentUserId = (user as any)?.userid || localStorage.getItem('userid') || sessionStorage.getItem('userid');
         
-        const res = await fetch('http://192.168.0.4:4000/api/bet/cancel', {
+        const res = await fetch('https://toto-server-f4j2.onrender.com/api/bet/cancel', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

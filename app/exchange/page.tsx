@@ -23,7 +23,7 @@ export default function ExchangePage() {
 
       try {
         // 2. 서버에 "내 정보 다시 줘!" 요청 (아까 server.js에 만든 그 주소)
-        const res = await fetch('http://localhost:4000/api/user/refresh', {
+        const res = await fetch('https://toto-server-f4j2.onrender.com/api/user/refresh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userid: (user as any).userid }) 
@@ -57,7 +57,7 @@ export default function ExchangePage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/api/exchange/request', {
+      const res = await fetch('https://toto-server-f4j2.onrender.com/api/exchange/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userid: currentUserId, amount }),
