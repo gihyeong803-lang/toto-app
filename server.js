@@ -18,8 +18,8 @@ const MONGO_URI = 'mongodb+srv://admin:project1234!@cluster0.tezppjm.mongodb.net
 const API_KEY = 'c3aa2808a3564ef19e2deec6f8badb0d';
 
 // [설정 3] 이메일 설정
-const EMAIL_USER = EMAIL_USER = process.env.EMAIL_USER; 
-const EMAIL_PASS = EMAIL_PASS = process.env.EMAIL_PASS;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
 // [설정 4] 관리자 수익률 설정 (0.85 = 85% 환급)
 const PAYOUT_RATE = 0.85; 
