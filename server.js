@@ -18,8 +18,8 @@ const MONGO_URI = 'mongodb+srv://admin:project1234!@cluster0.tezppjm.mongodb.net
 const API_KEY = 'c3aa2808a3564ef19e2deec6f8badb0d';
 
 // [설정 3] 이메일 설정
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
+const EMAIL_USER = 'gihyeong803@gmail.com';
+const EMAIL_PASS = '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';
 
 // [설정 4] 관리자 수익률 설정 (0.85 = 85% 환급)
 const PAYOUT_RATE = 0.85; 
@@ -112,18 +112,7 @@ const ExchangeSchema = new mongoose.Schema({
 });
 const Exchange = mongoose.model('Exchange', ExchangeSchema);
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com', 
-    port: 587,
-    secure: false, 
-    auth: { 
-        user: EMAIL_USER, 
-        pass: EMAIL_PASS 
-    },
-    tls: {
-        rejectUnauthorized: false 
-    }
-});
+
 
 // ================= [핵심 로직: 슈퍼컴퓨터 엔진] =================
 
@@ -470,28 +459,40 @@ app.get('/api/matches', async (req, res) => {
 });
 
 // ... (이메일 인증, 로그인, 회원가입 등 기존 코드는 유지) ...
-// [수정됨] 이메일 발송 API (에러 로그 출력 기능 추가)
+
+// [최종 해결책] 이메일 발송 API (HTTP API 호출로 포트 차단 우회)
 app.post('/api/auth/send-email', async (req, res) => {
     const { email } = req.body;
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     verificationStore[email] = code;
     
-    console.log(`📨 [System] 메일 발송 시도: ${email}`); // 시작 로그
+    console.log(`📨 [System] HTTP API 메일 전송 시도: ${email}`);
 
     try { 
-        await transporter.sendMail({ 
-            from: EMAIL_USER, 
-            to: email, 
-            subject: '[SportBet] 인증번호', 
-            text: `인증번호: ${code}` 
-        }); 
+        // Nodemailer 대신 Brevo의 HTTP API 엔드포인트에 직접 요청
+        const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
+            sender: { email: EMAIL_USER }, 
+            to: [{ email: email }],
+            subject: '[SportBet] 인증번호',
+            htmlContent: `안녕하세요. SportBet 인증번호는 다음과 같습니다: <strong>${code}</strong>`,
+        }, {
+            headers: {
+                // Master API Key를 'api-key' 헤더에 담아서 보냅니다.
+                'api-key': EMAIL_PASS, 
+                'Content-Type': 'application/json'
+            }
+        });
         
-        console.log(`✅ [System] 메일 전송 성공!`); // 성공 로그
-        res.json({ success: true }); 
+        if (brevoRes.status === 201) { // 201은 성공 코드
+            console.log(`✅ [System] HTTP API 전송 성공!`);
+            res.json({ success: true });
+        } else {
+            console.error(`❌ [System] HTTP API 전송 실패 (Status: ${brevoRes.status})`);
+            res.status(500).json({ success: false, message: 'API 전송 실패' });
+        }
     } catch (e) { 
-        // ★ 여기가 핵심! 에러가 나면 상세 내용을 로그에 찍습니다.
-        console.error('❌ [Error] 메일 전송 실패 원인:', e); 
-        res.status(500).json({ success: false, message: '전송 실패' }); 
+        console.error('❌ [Error] 최종 메일 전송 실패:', e.message); 
+        res.status(500).json({ success: false, message: '최종 전송 불가' }); 
     }
 });
 app.post('/api/auth/verify-email', (req, res) => {
