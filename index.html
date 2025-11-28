@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPL Match Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .match-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 pb-20">
+
+    <!-- Top Navigation -->
+    <nav class="fixed top-0 w-full z-40 glass border-b border-slate-200 transition-all duration-300" id="navbar">
+        <div class="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
+            <!-- Logo: Clicking resets to home -->
+            <div class="flex items-center gap-2 cursor-pointer" onclick="showPage('home')">
+                <div class="bg-gradient-to-br from-indigo-600 to-purple-600 text-white p-2 rounded-lg shadow-lg shadow-indigo-200">
+                    <i data-lucide="trophy" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-700 to-purple-700">MATCH CENTER</span>
+            </div>
+            
+            <!-- Auth Buttons -->
+            <div id="auth-section">
+                <!-- Logged Out State -->
+                <button onclick="openAuthModal('login')" id="login-btn" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md hover:shadow-lg">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <span>Sign In</span>
+                </button>
+
+                <!-- Logged In State (Hidden by default) -->
+                <div id="user-profile" class="hidden flex items-center gap-3">
+                    <span class="text-sm font-medium text-slate-600 hidden sm:block" id="header-username">User</span>
+                    <button onclick="toggleUserMenu()" class="relative group">
+                        <div class="w-9 h-9 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Avatar" class="w-full h-full">
+                        </div>
+                        <!-- Dropdown Menu -->
+                        <div id="user-menu-dropdown" class="hidden absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1 overflow-hidden origin-top-right transition-all z-50">
+                            <button onclick="showPage('mypage')" class="w-full flex items-center gap-2 px-4 py-3 hover:bg-slate-50 text-sm text-slate-700 text-left">
+                                <i data-lucide="user" class="w-4 h-4 text-slate-400"></i> My Profile
+                            </button>
+                            <div class="h-px bg-slate-100 my-1"></div>
+                            <button onclick="handleLogout()" class="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-50 text-sm text-red-600 text-left">
+                                <i data-lucide="log-out" class="w-4 h-4"></i> Sign Out
+                            </button>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="max-w-3xl mx-auto px-4 pt-24 space-y-8">
+        
+        <!-- PAGE: HOME (Fixtures) -->
+        <div id="page-home" class="space-y-8 transition-opacity duration-300">
+            <!-- Hero Section -->
+            <div class="relative overflow-hidden rounded-2xl bg-slate-900 shadow-2xl shadow-indigo-200/50">
+                <div class="absolute inset-0 opacity-20">
+                    <div class="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-indigo-500 blur-3xl"></div>
+                    <div class="absolute -bottom-24 -left-24 w-64 h-64 rounded-full bg-purple-500 blur-3xl"></div>
+                </div>
+                <div class="relative p-6 sm:p-8 text-center text-white">
+                    <span class="inline-block py-1 px-3 rounded-full bg-white/10 backdrop-blur-sm text-xs font-semibold tracking-wide mb-4 border border-white/20">NEXT MATCH</span>
+                    <div class="flex items-center justify-between gap-4 mb-6">
+                        <div class="flex flex-col items-center w-1/3 group cursor-pointer">
+                            <img src="https://resources.premierleague.com/premierleague/badges/t6.svg" alt="Spurs" class="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full p-3 mb-3 shadow-lg">
+                            <span class="font-bold text-lg sm:text-xl">Spurs</span>
+                        </div>
+                        <div class="flex flex-col items-center w-1/3">
+                            <div class="text-3xl sm:text-5xl font-black tracking-tighter mb-1 font-mono">VS</div>
+                            <div class="text-xs sm:text-sm font-medium text-slate-300">NOV 25 • 21:30</div>
+                        </div>
+                        <div class="flex flex-col items-center w-1/3 group cursor-pointer">
+                            <img src="https://resources.premierleague.com/premierleague/badges/t3.svg" alt="Arsenal" class="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full p-3 mb-3 shadow-lg">
+                            <span class="font-bold text-lg sm:text-xl">Arsenal</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fixtures List -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border border-slate-100">
+                <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    📅 UPCOMING SCHEDULE
+                </h2>
+                <div id="fixtures-list" class="space-y-4 min-h-[200px]">
+                    <div class="flex items-center justify-center h-32 text-slate-400 text-sm">
+                        <i data-lucide="loader-2" class="w-6 h-6 animate-spin mr-2"></i> Loading...
+                    </div>
+                </div>
+                <button onclick="loadMoreMatches()" class="w-full mt-6 py-3 text-sm font-medium text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-dashed border-slate-200 hover:border-indigo-200">
+                    Refresh Schedule
+                </button>
+            </div>
+        </div>
+
+        <!-- PAGE: MY PAGE (Hidden by default) -->
+        <div id="page-mypage" class="hidden space-y-6">
+            <!-- Profile Header -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
+                <div class="relative">
+                    <div class="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full p-1 border-4 border-white shadow-lg">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="Profile" class="w-full h-full rounded-full">
+                    </div>
+                    <button class="absolute bottom-0 right-0 bg-indigo-600 text-white p-2 rounded-full shadow-md hover:bg-indigo-700 transition-colors">
+                        <i data-lucide="camera" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="text-center sm:text-left flex-1">
+                    <h2 class="text-2xl font-bold text-slate-800" id="mypage-name">User Name</h2>
+                    <p class="text-slate-500" id="mypage-email">user@example.com</p>
+                    <div class="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
+                        <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100">Premium Member</span>
+                        <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">Spurs Fan</span>
+                    </div>
+                </div>
+                <button class="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+                    Edit Profile
+                </button>
+            </div>
+
+            <!-- My Tickets -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800">My Tickets</h3>
+                    <button class="text-sm text-indigo-600 font-medium hover:underline">View All</button>
+                </div>
+                <div class="p-6">
+                    <!-- Empty State for Demo -->
+                    <div class="text-center py-8 border-2 border-dashed border-slate-100 rounded-xl">
+                        <div class="bg-slate-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i data-lucide="ticket" class="w-6 h-6 text-slate-400"></i>
+                        </div>
+                        <p class="text-slate-500 font-medium">No active tickets</p>
+                        <p class="text-sm text-slate-400 mt-1">Your purchased tickets will appear here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Auth Modal (Login & Register) -->
+    <div id="auth-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0" id="modal-backdrop"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div id="modal-panel" class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md opacity-0 scale-95">
+                    
+                    <!-- Close Button -->
+                    <button onclick="closeAuthModal()" class="absolute top-4 right-4 z-10 text-slate-400 hover:text-slate-600 transition-colors">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+
+                    <!-- Header & Tabs -->
+                    <div class="bg-slate-50 px-4 pt-6 pb-0 border-b border-slate-200">
+                        <h3 class="text-xl font-bold text-slate-800 text-center mb-6">Welcome to Match Center</h3>
+                        <div class="flex">
+                            <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-indigo-600 text-indigo-600 transition-colors">Sign In</button>
+                            <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 pb-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors">Sign Up</button>
+                        </div>
+                    </div>
+
+                    <!-- Forms Container -->
+                    <div class="p-6">
+                        
+                        <!-- LOGIN FORM -->
+                        <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <input type="email" id="login-email" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" placeholder="you@example.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                                <input type="password" id="login-password" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="w-full rounded-xl bg-slate-900 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all">
+                                Sign In
+                            </button>
+                        </form>
+
+                        <!-- REGISTER FORM (Hidden by default) -->
+                        <form id="form-register" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                <input type="text" id="reg-name" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" placeholder="John Doe">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <input type="email" id="reg-email" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" placeholder="you@example.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                                <input type="password" id="reg-password" class="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-all">
+                                Create Account
+                            </button>
+                        </form>
+
+                        <!-- Divider -->
+                        <div class="relative mt-6">
+                            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                            <div class="relative flex justify-center text-sm"><span class="bg-white px-2 text-slate-400">Or continue with</span></div>
+                        </div>
+
+                        <!-- Social -->
+                        <div class="mt-6 grid grid-cols-2 gap-3">
+                            <button type="button" onclick="handleSocialLogin('google')" class="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                                Google
+                            </button>
+                            <button type="button" class="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                                Apple
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-20 right-4 z-50 transform transition-all duration-300 translate-x-full opacity-0">
+        <div class="bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+            <span id="toast-message">Notification</span>
+        </div>
+    </div>
+
+    <script>
+        // --- UI & Navigation Logic ---
+
+        try { lucide.createIcons(); } 
+        catch (e) { window.addEventListener('DOMContentLoaded', () => lucide.createIcons()); }
+
+        function showPage(pageId) {
+            // Hide all pages
+            document.getElementById('page-home').classList.add('hidden');
+            document.getElementById('page-mypage').classList.add('hidden');
+            
+            // Show selected page
+            const target = document.getElementById(`page-${pageId}`);
+            if (target) {
+                target.classList.remove('hidden');
+                // Close menu if open
+                document.getElementById('user-menu-dropdown').classList.add('hidden');
+                window.scrollTo(0, 0);
+            }
+        }
+
+        // --- Auth UI Logic ---
+
+        function openAuthModal(tab = 'login') {
+            const modal = document.getElementById('auth-modal');
+            const backdrop = document.getElementById('modal-backdrop');
+            const panel = document.getElementById('modal-panel');
+            
+            switchAuthTab(tab); // Set initial tab
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                panel.classList.remove('opacity-0', 'scale-95');
+                panel.classList.add('opacity-100', 'scale-100');
+            }, 10);
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('auth-modal');
+            const backdrop = document.getElementById('modal-backdrop');
+            const panel = document.getElementById('modal-panel');
+
+            backdrop.classList.add('opacity-0');
+            panel.classList.remove('opacity-100', 'scale-100');
+            panel.classList.add('opacity-0', 'scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function switchAuthTab(tab) {
+            const loginTab = document.getElementById('tab-login');
+            const regTab = document.getElementById('tab-register');
+            const loginForm = document.getElementById('form-login');
+            const regForm = document.getElementById('form-register');
+
+            if (tab === 'login') {
+                loginTab.classList.add('border-indigo-600', 'text-indigo-600');
+                loginTab.classList.remove('border-transparent', 'text-slate-500');
+                regTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                regTab.classList.add('border-transparent', 'text-slate-500');
+                
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+            } else {
+                regTab.classList.add('border-indigo-600', 'text-indigo-600');
+                regTab.classList.remove('border-transparent', 'text-slate-500');
+                loginTab.classList.remove('border-indigo-600', 'text-indigo-600');
+                loginTab.classList.add('border-transparent', 'text-slate-500');
+
+                regForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+            }
+        }
+
+        // --- API & Data Logic ---
+
+        const API_URL = 'http://localhost:3000/api';
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const btn = e.submitter;
+            const originalText = btn.innerHTML;
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = 'Creating...';
+                
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, email, password })
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('Account created! Please sign in.');
+                    switchAuthTab('login'); // Switch to login tab
+                    // Pre-fill login email
+                    document.getElementById('login-email').value = email;
+                } else {
+                    showToast(data.message || 'Registration failed');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Server error. Is server.js running?');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = e.submitter;
+            
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    loginSuccess(data.user);
+                } else {
+                    showToast(data.message || 'Login failed');
+                }
+            } catch (err) {
+                showToast('Login error. Is server.js running?');
+            }
+        }
+
+        function loginSuccess(user) {
+            closeAuthModal();
+            document.getElementById('login-btn').classList.add('hidden');
+            document.getElementById('user-profile').classList.remove('hidden');
+            document.getElementById('user-profile').classList.add('flex');
+            
+            // Update Header & MyPage Data
+            document.getElementById('header-username').innerText = user.name;
+            document.getElementById('mypage-name').innerText = user.name;
+            document.getElementById('mypage-email').innerText = user.email;
+
+            showToast(`Welcome, ${user.name}!`);
+        }
+
+        function handleLogout() {
+            document.getElementById('user-profile').classList.add('hidden');
+            document.getElementById('user-profile').classList.remove('flex');
+            document.getElementById('login-btn').classList.remove('hidden');
+            document.getElementById('user-menu-dropdown').classList.add('hidden');
+            showPage('home'); // Go back to home
+            showToast("Signed out successfully");
+        }
+
+        function toggleUserMenu() {
+            const menu = document.getElementById('user-menu-dropdown');
+            menu.classList.toggle('hidden');
+        }
+
+        // --- Fixture Data Logic ---
+
+        async function loadMoreMatches() {
+            try {
+                const res = await fetch(`${API_URL}/matches`);
+                const matches = await res.json();
+                const container = document.getElementById('fixtures-list');
+                
+                if(matches.length) {
+                    container.innerHTML = matches.map(m => `
+                        <div class="match-card p-4 rounded-xl border border-slate-100 flex items-center justify-between hover:border-indigo-100 transition-all cursor-pointer">
+                            <div class="text-center w-12"><div class="text-xs font-bold text-slate-400">${m.date}</div><div class="text-[10px] text-slate-300">${m.time}</div></div>
+                            <div class="flex-1 flex justify-center items-center gap-3">
+                                <span class="font-semibold text-slate-700">${m.home}</span>
+                                <span class="text-xs text-slate-400">vs</span>
+                                <span class="font-semibold text-slate-700">${m.away}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) { console.log('Server offline or error'); }
+        }
+        
+        // Init
+        window.addEventListener('DOMContentLoaded', loadMoreMatches);
+
+        // Utils
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            t.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(() => t.classList.add('translate-x-full', 'opacity-0'), 3000);
+        }
+
+        window.onclick = function(e) {
+            if (e.target == document.getElementById('modal-backdrop')) closeAuthModal();
+        }
+    </script>
+</body>
+</html>
