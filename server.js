@@ -18,8 +18,8 @@ const MONGO_URI = 'mongodb+srv://admin:project1234!@cluster0.tezppjm.mongodb.net
 const API_KEY = 'c3aa2808a3564ef19e2deec6f8badb0d';
 
 // [설정 3] 이메일 설정
-const EMAIL_USER = '9ccb58001@smtp-brevo.com'; 
-const EMAIL_PASS = 'xsmtpsib-f3e7a2e564d5906fca6c1a24ece17dc8d9cb2cd64c09d528e0e52c9c3ea08e3d-SkvYeAd4S0LNksHh'; 
+const EMAIL_USER = EMAIL_USER = process.env.EMAIL_USER; 
+const EMAIL_PASS = EMAIL_PASS = process.env.EMAIL_PASS;
 
 // [설정 4] 관리자 수익률 설정 (0.85 = 85% 환급)
 const PAYOUT_RATE = 0.85; 
@@ -124,6 +124,7 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: false 
     }
 });
+
 // ================= [핵심 로직: 슈퍼컴퓨터 엔진] =================
 
 // 1. [분석] API 순위 및 최근 전적 기반 팀 전력(Power) 계산
