@@ -113,11 +113,21 @@ const ExchangeSchema = new mongoose.Schema({
 const Exchange = mongoose.model('Exchange', ExchangeSchema);
 
 
+// [수정됨] 이메일 전송 설정 (타임아웃 방지 + IPv4 강제 설정)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+    host: 'smtp.gmail.com', // 구글 메일 서버 주소
+    port: 465,              // 보안 포트 (SSL)
+    secure: true,           // 보안 연결 사용
+    auth: { 
+        user: EMAIL_USER, 
+        pass: EMAIL_PASS 
+    },
+    // ★ 핵심: 클라우드 서버에서 연결 안 될 때 해결하는 옵션들
+    family: 4,              // IPv4만 사용 (이게 타임아웃 해결의 열쇠!)
+    connectionTimeout: 10000, // 10초 안에 연결 안 되면 재시도
+    greetingTimeout: 5000,    // 인사말 대기 시간 단축
+    socketTimeout: 10000      // 데이터 전송 대기 시간
 });
-
 
 // ================= [핵심 로직: 슈퍼컴퓨터 엔진] =================
 
@@ -438,7 +448,7 @@ const settleMatchLogic = async (matchId, homeScore, awayScore) => {
 };
 
 // --- 스케줄러 ---
-cron.schedule('*/1 * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
     await fetchFixtures();
 });
 
