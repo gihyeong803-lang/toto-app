@@ -18,8 +18,8 @@ const MONGO_URI = 'mongodb+srv://admin:project1234!@cluster0.tezppjm.mongodb.net
 const API_KEY = 'c3aa2808a3564ef19e2deec6f8badb0d';
 
 // [설정 3] 이메일 설정
-const EMAIL_USER = 'ilbon670@gmail.com'; 
-const EMAIL_PASS = 'hpzpwhacvbaumasn'; 
+const EMAIL_USER = '9ccb58001@smtp-brevo.com'; 
+const EMAIL_PASS = 'xsmtpsib-f3e7a2e564d5906fca6c1a24ece17dc8d9cb2cd64c09d528e0e52c9c3ea08e3d-SkvYeAd4S0LNksHh'; 
 
 // [설정 4] 관리자 수익률 설정 (0.85 = 85% 환급)
 const PAYOUT_RATE = 0.85; 
@@ -112,23 +112,18 @@ const ExchangeSchema = new mongoose.Schema({
 });
 const Exchange = mongoose.model('Exchange', ExchangeSchema);
 
-
-// [수정됨] 이메일 전송 설정 (타임아웃 방지 + IPv4 강제 설정)
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', // 구글 메일 서버 주소
-    port: 465,              // 보안 포트 (SSL)
-    secure: true,           // 보안 연결 사용
+    host: 'smtp-relay.brevo.com', 
+    port: 587,
+    secure: false, 
     auth: { 
         user: EMAIL_USER, 
         pass: EMAIL_PASS 
     },
-    // ★ 핵심: 클라우드 서버에서 연결 안 될 때 해결하는 옵션들
-    family: 4,              // IPv4만 사용 (이게 타임아웃 해결의 열쇠!)
-    connectionTimeout: 10000, // 10초 안에 연결 안 되면 재시도
-    greetingTimeout: 5000,    // 인사말 대기 시간 단축
-    socketTimeout: 10000      // 데이터 전송 대기 시간
+    tls: {
+        rejectUnauthorized: false 
+    }
 });
-
 // ================= [핵심 로직: 슈퍼컴퓨터 엔진] =================
 
 // 1. [분석] API 순위 및 최근 전적 기반 팀 전력(Power) 계산
