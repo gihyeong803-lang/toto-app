@@ -18,8 +18,8 @@ const MONGO_URI = 'mongodb+srv://admin:project1234!@cluster0.tezppjm.mongodb.net
 const API_KEY = 'c3aa2808a3564ef19e2deec6f8badb0d';
 
 // [설정 3] 이메일 설정
-const EMAIL_USER = 'gihyeong803@gmail.com'; 
-const EMAIL_PASS = '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';
+const EMAIL_USER = process.env.EMAIL_USER; 
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
 // [설정 4] 관리자 수익률 설정 (0.85 = 85% 환급)
 const PAYOUT_RATE = 0.85; 
@@ -460,7 +460,7 @@ app.get('/api/matches', async (req, res) => {
 
 // ... (이메일 인증, 로그인, 회원가입 등 기존 코드는 유지) ...
 
-// [최종 해결책] 이메일 발송 API (HTTP API 호출로 포트 차단 우회)
+// [최종 해결책] 이메일 발송 API (HTTP API 호출)
 app.post('/api/auth/send-email', async (req, res) => {
     const { email } = req.body;
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -469,24 +469,25 @@ app.post('/api/auth/send-email', async (req, res) => {
     console.log(`📨 [System] HTTP API 메일 전송 시도: ${email}`);
 
     try { 
-        // Nodemailer 대신 Brevo의 HTTP API 엔드포인트에 직접 요청
+        // Nodemailer transporter는 이제 사용하지 않습니다.
         const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
-            sender: { email: EMAIL_USER }, 
+            sender: { email: EMAIL_USER }, // Render Env Var에서 가져온 사용자 이메일
             to: [{ email: email }],
             subject: '[SportBet] 인증번호',
             htmlContent: `안녕하세요. SportBet 인증번호는 다음과 같습니다: <strong>${code}</strong>`,
         }, {
             headers: {
-                // Master API Key를 'api-key' 헤더에 담아서 보냅니다.
+                // Render Env Var에서 가져온 Master API Key 사용
                 'api-key': EMAIL_PASS, 
                 'Content-Type': 'application/json'
             }
         });
         
-        if (brevoRes.status === 201) { // 201은 성공 코드
+        if (brevoRes.status === 201) { 
             console.log(`✅ [System] HTTP API 전송 성공!`);
             res.json({ success: true });
         } else {
+            // Brevo에서 401 오류를 내면 이 로그가 찍힙니다.
             console.error(`❌ [System] HTTP API 전송 실패 (Status: ${brevoRes.status})`);
             res.status(500).json({ success: false, message: 'API 전송 실패' });
         }
