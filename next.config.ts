@@ -19,6 +19,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'assets.codepen.io',
       },
+      // ★ [추가됨] 위키피디아 로고 허용
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      },
+      // ★ [추가됨] ESPN 로고 허용 (선덜랜드 등 해결용)
+      {
+        protocol: 'https',
+        hostname: 'a.espncdn.com',
+      },
     ],
   },
 
@@ -27,7 +37,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        // ★ 여기에 Render 서버 주소를 넣으세요!
+        // ★ Render 서버 주소 (유지)
         destination: 'https://toto-server-f4j2.onrender.com/api/:path*', 
       },
     ];

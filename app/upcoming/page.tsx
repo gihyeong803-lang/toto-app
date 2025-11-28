@@ -5,6 +5,49 @@ import { MatchData } from '@/utils/mockMatches';
 
 export const dynamic = 'force-dynamic';
 
+// [최종 수정] 로고 매핑 함수 (ESPN + 위키피디아 혼합 사용으로 100% 표시 보장)
+const getTeamBadge = (teamName: string) => {
+  const name = teamName?.toLowerCase() || '';
+
+  // 1. 챔피언십 및 강등팀 (ESPN 고화질 로고 사용 - 절대 안 깨짐)
+  if (name.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+  if (name.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
+  if (name.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
+  if (name.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
+  if (name.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
+  if (name.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
+  if (name.includes('west brom')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/383.png';
+  if (name.includes('stoke')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/336.png';
+  if (name.includes('hull')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/306.png';
+  if (name.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
+  if (name.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
+  if (name.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
+  if (name.includes('sheffield')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/398.png';
+  if (name.includes('luton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/301.png';
+
+  // 2. 프리미어리그 현역 팀 (위키피디아 SVG 사용 - 깔끔함)
+  if (name.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
+  if (name.includes('aston villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg';
+  if (name.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
+  if (name.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
+  if (name.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
+  if (name.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
+  if (name.includes('crystal palace')) return 'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg';
+  if (name.includes('everton')) return 'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg';
+  if (name.includes('fulham')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg';
+  if (name.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
+  if (name.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg'; // Man City
+  if (name.includes('united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg'; // Man Utd
+  if (name.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
+  if (name.includes('nottingham')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
+  if (name.includes('tottenham')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
+  if (name.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
+  if (name.includes('wolves') || name.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
+
+  // 기본 이미지 (못 찾을 경우)
+  return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
+};
+
 export default async function UpcomingPage() {
   const allMatches = await getRealMatches();
   const upcomingMatches = allMatches.filter(m => m.status === 'UPCOMING');
@@ -40,15 +83,8 @@ export default async function UpcomingPage() {
     return acc;
   }, {} as Record<string, MatchData[]>);
 
-  // 로고 찾는 함수 (내부 정의 - 혹시 데이터에 로고가 없을 때 대비)
-  const getTeamBadge = (name: string) => {
-    const lowerName = name?.toLowerCase() || '';
-    // ... (기존 로직과 동일하게 프리미어리그 로고 등 리턴)
-    return `https://assets.codepen.io/t-1/premier-league-logo.png`; 
-  };
-
   return (
-    <div className="max-w-4xl mx-auto pb-20 md:pb-0"> {/* 모바일 하단 바 여백 추가 */}
+    <div className="max-w-4xl mx-auto pb-20 md:pb-0"> 
       
       {/* 헤더 */}
       <header className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-700 pb-4 mt-2 px-2">
@@ -63,7 +99,7 @@ export default async function UpcomingPage() {
         </span>
       </header>
 
-      {/* ★ 1. 메인 빅매치 배너 (모바일 최적화) */}
+      {/* ★ 1. 메인 빅매치 배너 */}
       <section className="mb-8 md:mb-12 px-2 md:px-0">
         <div className="relative rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-slate-700 group">
           {/* 배경 이미지 효과 */}
@@ -78,16 +114,16 @@ export default async function UpcomingPage() {
               
               {/* 홈팀 */}
               <div className="flex flex-col items-center gap-2 md:gap-4 w-1/3">
-                {/* 모바일 w-16, PC w-24 */}
                 <div className="w-16 h-16 md:w-24 md:h-24 relative drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                  {/* ★ unoptimized 필수 적용 */}
                   <Image 
-                    src={featuredMatch.homeLogo || getTeamBadge(featuredMatch.homeTeam)} 
+                    src={getTeamBadge(featuredMatch.homeTeam)} 
                     alt={featuredMatch.homeTeam} 
                     fill 
                     className="object-contain" 
+                    unoptimized
                   />
                 </div>
-                {/* 모바일 텍스트 작게 & 줄바꿈 허용 */}
                 <span className="text-xs md:text-2xl font-black text-white uppercase tracking-tight break-words w-full leading-tight">
                   {featuredMatch.homeTeam}
                 </span>
@@ -104,11 +140,13 @@ export default async function UpcomingPage() {
               {/* 원정팀 */}
               <div className="flex flex-col items-center gap-2 md:gap-4 w-1/3">
                 <div className="w-16 h-16 md:w-24 md:h-24 relative drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                  {/* ★ unoptimized 필수 적용 */}
                   <Image 
-                    src={featuredMatch.awayLogo || getTeamBadge(featuredMatch.awayTeam)} 
+                    src={getTeamBadge(featuredMatch.awayTeam)} 
                     alt={featuredMatch.awayTeam} 
                     fill 
                     className="object-contain" 
+                    unoptimized
                   />
                 </div>
                 <span className="text-xs md:text-2xl font-black text-white uppercase tracking-tight break-words w-full leading-tight">

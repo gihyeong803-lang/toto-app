@@ -835,12 +835,31 @@ app.get('/api/admin/exchanges', async (req, res) => {
 });
 
 // 3. [배팅 목록 조회] 프론트엔드가 'bets'라는 이름을 원함!
+// [수정됨] 관리자 배팅 내역 조회 (유저 정보 + 다폴더 상세 포함)
+// [수정] 관리자 배팅 내역 조회 (유저 정보 + 다폴더 상세 + 실명 포함)
 app.get('/api/admin/bets', async (req, res) => {
     try {
-        const list = await Bet.find().sort({ betTime: -1 });
-        // ★ 수정됨: bets로 반환
-        res.json({ success: true, bets: list }); 
+        // 1. 모든 배팅 내역을 최신순으로 가져옴
+        const bets = await Bet.find().sort({ betTime: -1 });
+        
+        // 2. 각 배팅마다 "누가 걸었는지" 유저 정보를 찾아서 합침
+        const enrichedBets = await Promise.all(bets.map(async (bet) => {
+            // 배팅한 사람(userId)을 DB에서 찾음
+            const user = await User.findOne({ userid: bet.userId });
+            
+            return {
+                ...bet._doc, // 기존 배팅 정보 유지
+                // ★ 유저 정보 추가 (닉네임, 예금주)
+                userInfo: user ? { 
+                    nickname: user.nickname, 
+                    name: user.accountHolder || '미등록' 
+                } : { nickname: '탈퇴회원', name: '-' }
+            };
+        }));
+
+        res.json({ success: true, bets: enrichedBets });
     } catch (e) {
+        console.error("배팅 내역 조회 실패:", e);
         res.status(500).json({ success: false, bets: [] });
     }
 });
