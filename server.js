@@ -461,7 +461,7 @@ app.get('/api/matches', async (req, res) => {
 // ... (이메일 인증, 로그인, 회원가입 등 기존 코드는 유지) ...
 
 // [최종 해결책] 이메일 발송 API (HTTP API 호출)
-a// [디버깅용 수정] 이메일 발송 API (상세 에러 확인용)
+// [디버깅용 수정] 이메일 발송 API (상세 에러 확인용)
 app.post('/api/auth/send-email', async (req, res) => {
     const { email } = req.body;
     
