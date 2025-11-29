@@ -727,23 +727,35 @@ app.post('/api/admin/reset-match', async (req, res) => {
     res.json({ success: true });
 });
 
+// [수정] 배팅 취소 API (메시지 전송 기능 추가)
 app.post('/api/bet/cancel', async (req, res) => {
     const { betId, userid } = req.body;
     try {
         const bet = await Bet.findById(betId);
-        if (!bet || bet.userId !== userid || bet.status !== 'PENDING') return res.status(400).json({});
+        if (!bet || bet.userId !== userid || bet.status !== 'PENDING') {
+            return res.status(400).json({ success: false, message: '취소 불가능한 상태입니다.' });
+        }
         
+        // 경기 시작 여부 확인
         const matchId = bet.matchId || (bet.items && bet.items[0].matchId);
         const match = await Match.findOne({ id: matchId });
-        if (match && match.status !== 'SCHEDULED' && match.status !== 'TIMED') return res.status(400).json({});
+        if (match && match.status !== 'SCHEDULED' && match.status !== 'TIMED' && match.status !== 'UPCOMING') {
+            return res.status(400).json({ success: false, message: '이미 진행/종료된 경기는 취소할 수 없습니다.' });
+        }
 
+        // 삭제 및 환불
         await Bet.findByIdAndDelete(betId);
         const user = await User.findOne({ userid });
-        user.money += bet.stake; await user.save();
-        res.json({ success: true });
-    } catch (e) { res.status(500).json({ success: false }); }
-});
+        user.money += bet.stake; 
+        await user.save();
 
+        // ★ [핵심] 여기에 message를 꼭 넣어줘야 'undefined'가 안 뜹니다!
+        res.json({ success: true, message: '배팅이 정상적으로 취소되었습니다.' });
+
+    } catch (e) { 
+        res.status(500).json({ success: false, message: '서버 오류 발생' }); 
+    }
+});
 // ================= [누락된 충전/환전 API 복구] =================
 
 // 1. 충전 신청 (이게 없어서 404 오류가 떴던 겁니다)

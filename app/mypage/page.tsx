@@ -41,17 +41,25 @@ interface Match {
   status: string; 
 }
 
-// [수정됨] 로고 매핑 함수 (아스톤 빌라 ESPN으로 교체)
+// [수정됨] 로고 매핑 함수 (웨스트햄/맨유 충돌 해결)
 const getTeamLogo = (teamName: string) => {
   const name = teamName?.toLowerCase() || '';
   
-  // 1. ESPN 고화질 로고 (안전빵)
-  if (name.includes('aston villa')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/362.png'; // ★ 수정됨
+  // 1. [순서 중요] 'United'가 들어가는 다른 팀들을 먼저 검사해야 함!
+  if (name.includes('west ham')) return 'https://resources.premierleague.com/premierleague/badges/50/t21.png';
+  if (name.includes('newcastle')) return 'https://resources.premierleague.com/premierleague/badges/50/t4.png';
+  if (name.includes('sheffield')) return 'https://resources.premierleague.com/premierleague/badges/50/t49.png';
+  if (name.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
+
+  // 2. 그 다음 맨유 검사 (이제 안전함)
+  if (name.includes('united') || name.includes('man utd')) return 'https://resources.premierleague.com/premierleague/badges/50/t1.png';
+
+  // 3. 나머지 팀들 (ESPN 고화질 + 위키피디아)
   if (name.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+  if (name.includes('aston villa')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/362.png';
   if (name.includes('bournemouth')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/349.png';
   if (name.includes('brentford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/337.png';
   if (name.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
-  if (name.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
   if (name.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
   if (name.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
   if (name.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
@@ -62,7 +70,6 @@ const getTeamLogo = (teamName: string) => {
   if (name.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
   if (name.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
 
-  // 2. 위키피디아 로고 (나머지 PL 팀)
   if (name.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
   if (name.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
   if (name.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
@@ -72,17 +79,12 @@ const getTeamLogo = (teamName: string) => {
   if (name.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
   if (name.includes('luton')) return 'https://upload.wikimedia.org/wikipedia/en/9/9d/Luton_Town_logo.svg';
   if (name.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg'; 
-  if (name.includes('united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg'; 
-  if (name.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
   if (name.includes('nottingham')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
-  if (name.includes('sheffield')) return 'https://upload.wikimedia.org/wikipedia/en/9/9c/Sheffield_United_FC_logo.svg';
   if (name.includes('tottenham')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
-  if (name.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
   if (name.includes('wolves') || name.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
 
   return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
 };
-
 export default function MyPage() {
   const { user, login } = useAuthStore();
   const router = useRouter();
