@@ -83,6 +83,7 @@ const MatchSchema = new mongoose.Schema({
     league: String,
     home: String,
     away: String,
+    matchTime: { type: String },
     date: String,
     time: String,
     status: String,
@@ -295,6 +296,7 @@ const fetchFixtures = async () => {
                 league: 'Premier League',
                 home: apiMatch.homeTeam.name,
                 away: apiMatch.awayTeam.name,
+                matchTime: apiMatch.utcDate,
                 date: new Date(apiMatch.utcDate).toLocaleDateString(),
                 time: new Date(apiMatch.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: apiMatch.status,
@@ -309,6 +311,12 @@ const fetchFixtures = async () => {
             };
 
             await Match.findOneAndUpdate({ id: apiMatch.id }, matchData, { upsert: true, new: true });
+            
+            if (apiMatch.status === 'FINISHED') {
+                console.log(`⚡ [자동 정산] ${apiMatch.homeTeam.name} vs ${apiMatch.awayTeam.name} 경기 종료 감지!`);
+                await settleMatchLogic(apiMatch.id, hScore, aScore);
+            }
+            
         }
         console.log(`[System] 경기 데이터 업데이트 완료.`);
     } catch (error) {
@@ -433,7 +441,7 @@ const settleMatchLogic = async (matchId, homeScore, awayScore) => {
 };
 
 // --- 스케줄러 ---
-cron.schedule('*/5 * * * *', async () => {
+cron.schedule('*/2 * * * *', async () => {
     await fetchFixtures();
 });
 
