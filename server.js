@@ -462,50 +462,51 @@ app.get('/api/matches', async (req, res) => {
 
 // [최종 해결책] 이메일 발송 API (HTTP API 호출)
 // [디버깅용 수정] 이메일 발송 API (상세 에러 확인용)
+// [최종 수정] 이메일 발송 API (발신자 하드코딩으로 빈 값 오류 해결)
 app.post('/api/auth/send-email', async (req, res) => {
     const { email } = req.body;
-    
-    // 1. 요청 받은 이메일 확인
-    console.log(`📨 [System] 이메일 발송 요청 받음: ${email}`);
-    
-    // 2. 설정된 계정 정보 확인 (보안 위해 앞 5자리만 출력)
-    console.log(`🔍 [Check] 발신자(USER): ${EMAIL_USER}`);
-    console.log(`🔍 [Check] 키(PASS) 앞부분: ${EMAIL_PASS ? EMAIL_PASS.substring(0, 15) : '없음'}...`);
-
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     verificationStore[email] = code;
+    
+    console.log(`📨 [System] HTTP API 메일 전송 시도: ${email}`);
 
     try { 
+        // ★ Brevo Master API Key는 환경변수에서 가져옴 (보안 유지)
+        // (혹시 못 가져올 경우를 대비해 안전장치 추가)
+        const apiKey = process.env.EMAIL_PASS;
+
+        if (!apiKey) {
+            console.error("❌ [Error] API Key (EMAIL_PASS)가 없습니다! Render 환경변수를 확인하세요.");
+            return res.status(500).json({ success: false, message: '서버 설정 오류' });
+        }
+
         const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
-            sender: { email: EMAIL_USER }, 
+            // ★ [수정됨] 변수 대신 실제 이메일을 직접 입력 (오류 원인 100% 제거)
+            sender: { 
+                name: "SportBet 관리자", 
+                email: "gihyeong803@gmail.com" 
+            },
             to: [{ email: email }],
             subject: '[SportBet] 인증번호',
             htmlContent: `안녕하세요. SportBet 인증번호는 다음과 같습니다: <strong>${code}</strong>`,
         }, {
             headers: {
-                'api-key': EMAIL_PASS, 
+                'api-key': apiKey, 
                 'Content-Type': 'application/json',
                 'accept': 'application/json'
             }
         });
         
-        console.log(`✅ [Success] Brevo 응답 코드: ${brevoRes.status}`);
-        res.json({ success: true });
-
-    } catch (e) { 
-        // ★ 여기가 핵심입니다! Brevo가 알려준 "진짜 이유"를 출력합니다.
-        console.error('❌ [Error] 전송 실패!');
-        
-        if (e.response) {
-            // Brevo가 응답을 줬는데 에러인 경우 (400, 401 등)
-            console.error('👉 응답 상태 코드:', e.response.status);
-            console.error('👉 거절 사유 (상세):', JSON.stringify(e.response.data, null, 2));
+        if (brevoRes.status === 201) { 
+            console.log(`✅ [System] HTTP API 전송 성공!`);
+            res.json({ success: true });
         } else {
-            // 아예 연결조차 안 된 경우
-            console.error('👉 연결 오류 메시지:', e.message);
+            console.error(`❌ [System] 전송 실패 (Status: ${brevoRes.status})`);
+            res.status(500).json({ success: false, message: 'API 전송 실패' });
         }
-
-        res.status(500).json({ success: false, message: '이메일 전송 실패' }); 
+    } catch (e) { 
+        console.error('❌ [Error] 최종 메일 전송 실패:', e.response?.data || e.message); 
+        res.status(500).json({ success: false, message: '최종 전송 불가' }); 
     }
 });
 app.post('/api/auth/verify-email', (req, res) => {
