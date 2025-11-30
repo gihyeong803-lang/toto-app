@@ -314,7 +314,7 @@ const fetchFixtures = async () => {
             
             if (apiMatch.status === 'FINISHED') {
                 console.log(`⚡ [자동 정산] ${apiMatch.homeTeam.name} vs ${apiMatch.awayTeam.name} 경기 종료 감지!`);
-                await settleMatchLogic(apiMatch.id, hScore, aScore);
+                await settleMatchLogic(apiMatch.id, homeScore, awayScore);
             }
             
         }
