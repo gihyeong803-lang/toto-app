@@ -1082,23 +1082,39 @@ app.get('/api/admin/force-refresh', async (req, res) => {
 });
 
 // [긴급 진단 2] 시간 설정 확인용 (서버가 몇 시로 알고 있는지 눈으로 확인)
+// server.js 의 app.get('/api/debug/time', ...) 전체를 교체
+
+// server.js의 app.get('/api/debug/time', ...) 전체를 이걸로 덮어씌우세요.
+
 app.get('/api/debug/time', async (req, res) => {
-    const now = new Date();
-    const utcNow = now.getTime();
-    const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 우리가 강제로 만든 한국 시간
-    const kstDate = new Date(kstNowVal);
+    try {
+        const now = new Date();
+        const utcNow = now.getTime();
+        const kstNowVal = utcNow + (9 * 60 * 60 * 1000); 
+        const kstDate = new Date(kstNowVal);
 
-    // DB에서 가장 가까운 경기 하나 가져오기
-    const sampleMatch = await Match.findOne({ status: 'SCHEDULED' });
+        // 1. 조건 없이 전체 개수 세기
+        const totalCount = await Match.countDocuments({});
 
-    res.json({
-        서버_원본_시간_UTC: now.toISOString(),
-        서버_인식_한국시간_KST: kstDate.toUTCString().replace('GMT', '(KST값)'),
-        DB_저장된_경기시간: sampleMatch ? sampleMatch.matchTime : "경기 없음",
-        DB_경기_ID: sampleMatch ? sampleMatch.id : null
-    });
+        // 2. 조건 없이 아무 경기나 1개 가져오기
+        const anyMatch = await Match.findOne({}); 
+
+        res.json({
+            현재_서버_시간_KST: kstDate.toUTCString().replace('GMT', '(KST)'),
+            DB_데이터_총_개수: totalCount,
+            샘플_경기_정보: anyMatch ? {
+                홈팀: anyMatch.home,
+                어웨이팀: anyMatch.away,
+                저장된_시간_문자열: anyMatch.matchTime, 
+                // ★ [수정됨] 괄호가 들어간 키 이름에 따옴표("")를 붙여서 오류 해결
+                "상태(Status)": anyMatch.status, 
+                ID: anyMatch.id
+            } : "❌ DB가 텅 비어있습니다. (API 호출 실패 또는 키 만료)"
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
-
 // ==========================================================
 
 // [필수] 서버 시작 (시뮬레이션 엔진 가동)
