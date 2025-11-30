@@ -1115,6 +1115,39 @@ app.get('/api/debug/time', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// [테스트용] 특정 경기를 강제로 'LIVE' 상태로 변경 (베팅 테스트용)
+app.get('/api/admin/force-live', async (req, res) => {
+    try {
+        // 1. 아무 경기나 하나 찾음 (혹은 특정 ID를 지정해도 됨)
+        // 여기서는 아까 로그에 떴던 '선덜랜드' 경기를 타겟으로 잡아봄
+        const targetMatch = await Match.findOne({ id: 537905 }); 
+        
+        // 만약 선덜랜드 경기가 없으면 그냥 맨 처음 거 아무거나 잡음
+        const match = targetMatch || await Match.findOne({});
+
+        if (!match) {
+            return res.json({ success: false, message: "경기가 하나도 없습니다." });
+        }
+
+        // 2. 상태를 'LIVE'로 강제 변경
+        match.status = 'LIVE'; // ★ 핵심: 이걸로 시간 체크 로직을 우회함
+        match.score = { home: 1, away: 1 }; // 스코어도 1:1로 변경
+        match.isSettled = false; // 정산 안 된 상태로
+        
+        await match.save();
+
+        console.log(`⚡ [Admin] 강제 라이브 전환 완료: ${match.home} vs ${match.away}`);
+        
+        res.json({ 
+            success: true, 
+            message: `[${match.home} vs ${match.away}] 경기가 이제 LIVE 상태입니다.`,
+            matchId: match.id
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 // ==========================================================
 
 // [필수] 서버 시작 (시뮬레이션 엔진 가동)
