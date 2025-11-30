@@ -1059,6 +1059,46 @@ app.post('/api/admin/approve-exchange', async (req, res) => {
     }
 });
 
+// server.js 맨 아래쪽, app.listen 위에 추가하세요.
+
+// [긴급 진단 1] DB 초기화 및 강제 동기화 (옛날 데이터 삭제용)
+app.get('/api/admin/force-refresh', async (req, res) => {
+    try {
+        console.log("⚠️ [Admin] 매치 데이터 전체 삭제 및 재동기화 시도...");
+        // 1. 기존 매치 데이터 싹 지우기 (잘못된 시간 포맷 삭제)
+        await Match.deleteMany({}); 
+        console.log("✅ 기존 데이터 삭제 완료.");
+
+        // 2. 다시 받아오기
+        await fetchTeamFormAndPredict();
+        await fetchFixtures();
+        
+        console.log("✅ 데이터 재동기화 완료.");
+        res.json({ success: true, message: "DB가 깨끗하게 초기화되고 최신 데이터로 업데이트되었습니다." });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// [긴급 진단 2] 시간 설정 확인용 (서버가 몇 시로 알고 있는지 눈으로 확인)
+app.get('/api/debug/time', async (req, res) => {
+    const now = new Date();
+    const utcNow = now.getTime();
+    const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 우리가 강제로 만든 한국 시간
+    const kstDate = new Date(kstNowVal);
+
+    // DB에서 가장 가까운 경기 하나 가져오기
+    const sampleMatch = await Match.findOne({ status: 'SCHEDULED' });
+
+    res.json({
+        서버_원본_시간_UTC: now.toISOString(),
+        서버_인식_한국시간_KST: kstDate.toUTCString().replace('GMT', '(KST값)'),
+        DB_저장된_경기시간: sampleMatch ? sampleMatch.matchTime : "경기 없음",
+        DB_경기_ID: sampleMatch ? sampleMatch.id : null
+    });
+});
+
 // ==========================================================
 
 // [필수] 서버 시작 (시뮬레이션 엔진 가동)
