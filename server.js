@@ -291,17 +291,48 @@ const fetchFixtures = async () => {
             const homeScore = apiMatch.score.fullTime.home ?? 0;
             const awayScore = apiMatch.score.fullTime.away ?? 0;
 
+            // -----------------------------------------------------------
+            // ★ [Render 배포용 시간 보정 로직]
+            // 서버의 로컬 시간(UTC)을 무시하고, 무조건 'Asia/Seoul' 기준으로 변환
+            // -----------------------------------------------------------
+            const utcDate = new Date(apiMatch.utcDate);
+
+            // 1. 한국 시간 포맷터 생성
+            const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            // 2. 날짜/시간 부품 추출
+            const parts = kstFormatter.formatToParts(utcDate);
+            const getPart = (type) => parts.find(p => p.type === type).value;
+
+            // 3. 프론트엔드가 원하는 형식으로 조립 ("11. 30. 02:30")
+            // (프론트엔드에서 앞에 연도를 붙여서 사용하므로, 여기서는 월.일. 시:분 형태 유지)
+            const formattedMatchTime = `${getPart('month')}. ${getPart('day')}. ${getPart('hour')}:${getPart('minute')}`;
+            
+            // 4. DB 저장용 날짜/시간 문자열 (한국 시간 기준)
+            const kstDateString = `${getPart('year')}. ${getPart('month')}. ${getPart('day')}.`;
+            const kstTimeString = `${getPart('hour')}:${getPart('minute')}:${getPart('second') || '00'}`;
+
             const matchData = {
                 id: apiMatch.id,
                 league: 'Premier League',
                 home: apiMatch.homeTeam.name,
                 away: apiMatch.awayTeam.name,
-                matchTime: apiMatch.utcDate,
-                date: new Date(apiMatch.utcDate).toLocaleDateString(),
-                time: new Date(apiMatch.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                
+                // ★ 여기가 핵심: 한국 시간으로 변환된 문자열을 저장
+                matchTime: formattedMatchTime, 
+                date: kstDateString, 
+                time: kstTimeString,
+                
                 status: apiMatch.status,
                 score: { home: homeScore, away: awayScore },
-                // ★ 업그레이드된 배당률 생성기 사용
                 odds: generateMockOdds(
                     apiMatch.homeTeam.name, 
                     apiMatch.awayTeam.name,
