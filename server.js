@@ -1117,32 +1117,49 @@ app.get('/api/debug/time', async (req, res) => {
 });
 
 // [테스트용] 특정 경기를 강제로 'LIVE' 상태로 변경 (베팅 테스트용)
+// server.js 의 /api/admin/force-live 라우트 전체 교체
+
 app.get('/api/admin/force-live', async (req, res) => {
     try {
-        // 1. 아무 경기나 하나 찾음 (혹은 특정 ID를 지정해도 됨)
-        // 여기서는 아까 로그에 떴던 '선덜랜드' 경기를 타겟으로 잡아봄
+        // 1. 아무 경기나 하나 찾음 (선덜랜드 경기 우선)
         const targetMatch = await Match.findOne({ id: 537905 }); 
-        
-        // 만약 선덜랜드 경기가 없으면 그냥 맨 처음 거 아무거나 잡음
         const match = targetMatch || await Match.findOne({});
 
         if (!match) {
             return res.json({ success: false, message: "경기가 하나도 없습니다." });
         }
 
-        // 2. 상태를 'LIVE'로 강제 변경
-        match.status = 'LIVE'; // ★ 핵심: 이걸로 시간 체크 로직을 우회함
-        match.score = { home: 1, away: 1 }; // 스코어도 1:1로 변경
-        match.isSettled = false; // 정산 안 된 상태로
+        // 2. [핵심] 날짜를 '오늘 현재 시간'으로 강제 변경 (그래야 필터링에 걸림)
+        const now = new Date();
+        const utcNow = now.getTime();
+        const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 한국 시간
+        const kstDate = new Date(kstNowVal);
+
+        const month = (kstDate.getUTCMonth() + 1).toString().padStart(2, '0');
+        const day = kstDate.getUTCDate().toString().padStart(2, '0');
+        const hour = kstDate.getUTCHours().toString().padStart(2, '0');
+        const minute = kstDate.getUTCMinutes().toString().padStart(2, '0');
+        const year = kstDate.getUTCFullYear();
+
+        // 3. 데이터 업데이트
+        match.status = 'LIVE'; 
+        match.score = { home: 1, away: 2 }; // 스코어도 1:2로 변경해봄
+        
+        // 날짜를 오늘로 바꿈
+        match.matchTime = `${month}. ${day}. ${hour}:${minute}`; 
+        match.date = `${year}. ${month}. ${day}.`;
+        match.time = `${hour}:${minute}`;
+        
+        match.isSettled = false;
         
         await match.save();
 
-        console.log(`⚡ [Admin] 강제 라이브 전환 완료: ${match.home} vs ${match.away}`);
+        console.log(`⚡ [Admin] 강제 라이브(오늘 날짜) 전환 완료: ${match.home} vs ${match.away}`);
         
         res.json({ 
             success: true, 
-            message: `[${match.home} vs ${match.away}] 경기가 이제 LIVE 상태입니다.`,
-            matchId: match.id
+            message: `[${match.home} vs ${match.away}] 경기가 오늘(${match.matchTime}) LIVE 상태로 변경되었습니다.`,
+            matchData: match
         });
     } catch (e) {
         res.status(500).json({ error: e.message });
