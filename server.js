@@ -292,33 +292,28 @@ const fetchFixtures = async () => {
             const awayScore = apiMatch.score.fullTime.away ?? 0;
 
             // -----------------------------------------------------------
-            // ★ [Render 배포용 시간 보정 로직]
-            // 서버의 로컬 시간(UTC)을 무시하고, 무조건 'Asia/Seoul' 기준으로 변환
+            // ★ [최종 해결책] 수동으로 9시간 더하기 (서버 환경 무시)
             // -----------------------------------------------------------
-            const utcDate = new Date(apiMatch.utcDate);
-
-            // 1. 한국 시간 포맷터 생성
-            const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
-                timeZone: 'Asia/Seoul',
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            });
-
-            // 2. 날짜/시간 부품 추출
-            const parts = kstFormatter.formatToParts(utcDate);
-            const getPart = (type) => parts.find(p => p.type === type).value;
-
-            // 3. 프론트엔드가 원하는 형식으로 조립 ("11. 30. 02:30")
-            // (프론트엔드에서 앞에 연도를 붙여서 사용하므로, 여기서는 월.일. 시:분 형태 유지)
-            const formattedMatchTime = `${getPart('month')}. ${getPart('day')}. ${getPart('hour')}:${getPart('minute')}`;
+            const utcDate = new Date(apiMatch.utcDate); // 예: 14:05 (UTC)
             
-            // 4. DB 저장용 날짜/시간 문자열 (한국 시간 기준)
-            const kstDateString = `${getPart('year')}. ${getPart('month')}. ${getPart('day')}.`;
-            const kstTimeString = `${getPart('hour')}:${getPart('minute')}:${getPart('second') || '00'}`;
+            // 1. 9시간(ms)을 더해서 한국 시간 객체를 만듦
+            const KST_OFFSET = 9 * 60 * 60 * 1000; 
+            const kstDate = new Date(utcDate.getTime() + KST_OFFSET); // 예: 23:05 (시간값 자체를 변조)
+
+            // 2. 변조된 시간에서 숫자만 뽑아냄 (getUTC 메서드 사용 필수)
+            const month = (kstDate.getUTCMonth() + 1).toString().padStart(2, '0');
+            const day = kstDate.getUTCDate().toString().padStart(2, '0');
+            const hour = kstDate.getUTCHours().toString().padStart(2, '0');
+            const minute = kstDate.getUTCMinutes().toString().padStart(2, '0');
+            const second = kstDate.getUTCSeconds().toString().padStart(2, '0');
+            const year = kstDate.getUTCFullYear();
+
+            // 3. 프론트엔드용 포맷 "11. 30. 23:05" (한국 시간 숫자값 강제 주입)
+            const formattedMatchTime = `${month}. ${day}. ${hour}:${minute}`;
+            
+            // 4. DB 저장용 (기존 필드 유지)
+            const kstDateString = `${year}. ${month}. ${day}.`;
+            const kstTimeString = `${hour}:${minute}:${second}`;
 
             const matchData = {
                 id: apiMatch.id,
@@ -326,7 +321,7 @@ const fetchFixtures = async () => {
                 home: apiMatch.homeTeam.name,
                 away: apiMatch.awayTeam.name,
                 
-                // ★ 여기가 핵심: 한국 시간으로 변환된 문자열을 저장
+                // ★ 강제로 계산된 한국 시간이 저장됨
                 matchTime: formattedMatchTime, 
                 date: kstDateString, 
                 time: kstTimeString,
@@ -342,6 +337,7 @@ const fetchFixtures = async () => {
             };
 
             await Match.findOneAndUpdate({ id: apiMatch.id }, matchData, { upsert: true, new: true });
+           
             
             if (apiMatch.status === 'FINISHED') {
                 console.log(`⚡ [자동 정산] ${apiMatch.homeTeam.name} vs ${apiMatch.awayTeam.name} 경기 종료 감지!`);
