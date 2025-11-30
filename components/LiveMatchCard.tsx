@@ -3,7 +3,12 @@
 import { useState, useEffect } from 'react';
 // import Image from 'next/image'; 
 import { useBetStore } from '../store/useBetStore';
-import { calculateLiveOdds } from '@/utils/oddsSystem';
+
+// ★ [삭제됨] 가짜 배당 계산기는 이제 필요 없습니다.
+// import { calculateLiveOdds } from '@/utils/oddsSystem';
+
+// ★ [추가] 내 Render 서버 주소 (footballApi.ts와 동일하게 설정)
+const API_BASE_URL = 'https://toto-server-f4j2.onrender.com'; 
 
 interface MatchProps {
   id: number;
@@ -11,7 +16,7 @@ interface MatchProps {
   awayTeam: string;
   homeLogo?: string;
   awayLogo?: string;
-  matchTime: string; // 예: "11. 30. 23:05" (서버에서 계산된 한국 시간 문자열)
+  matchTime: string; // "11. 30. 23:05" (한국 시간 문자열)
   status: 'LIVE' | 'UPCOMING' | 'FINISHED';
   odds: { home: number; draw: number; away: number };
   score?: { home: number; away: number };
@@ -20,14 +25,18 @@ interface MatchProps {
 export default function LiveMatchCard({ match }: { match: MatchProps }) {
   const { addBet, bets } = useBetStore();
   
-  // 초기 상태 설정
+  // 1. 배당률 상태 (초기값은 props에서)
   const [liveOdds, setLiveOdds] = useState(match.odds);
+  // 2. ★ [추가] 실시간 스코어 상태 (서버에서 가져온 최신 점수 반영용)
+  const [liveScore, setLiveScore] = useState(match.score || { home: 0, away: 0 });
+  
   const [trend, setTrend] = useState<'up' | 'down' | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // 로고 매핑 함수 (UpcomingPage와 동일한 로직)
+  // 로고 매핑 함수 (유지)
   const getTeamBadge = (name: string) => {
     const lowerName = name?.toLowerCase() || '';
+    // ... (기존 로고 로직 그대로 유지) ...
     const baseUrl = 'https://resources.premierleague.com/premierleague/badges';
     
     if (lowerName.includes('arsenal')) return `${baseUrl}/t3.svg`;
@@ -53,88 +62,89 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return `${baseUrl}/t6.svg`;
     if (lowerName.includes('west ham')) return `${baseUrl}/t21.svg`;
     if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return `${baseUrl}/t39.svg`;
-    if (lowerName.includes('leeds')) return `${baseUrl}/t2.svg`;      
-    if (lowerName.includes('watford')) return `${baseUrl}/t57.svg`;
-    if (lowerName.includes('norwich')) return `${baseUrl}/t45.svg`;
-    if (lowerName.includes('sunderland')) return `${baseUrl}/t56.svg`;
-
+    
+    // 기타 팀들
+    if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+    if (lowerName.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
+    
     return `https://assets.codepen.io/t-1/premier-league-logo.png`; 
   };
 
   useEffect(() => {
     // ----------------------------------------------------------------
-    // 1. [시간 계산 로직] 서버에서 온 한국 시간 문자열을 파싱 + 하프타임 보정
+    // 1. [시간 계산 로직] (기존 유지)
     // ----------------------------------------------------------------
     const updateGameTime = () => {
-      // 경기 전이면 0분
       if (match.status === 'UPCOMING') {
         setElapsedTime(0);
         return;
       }
-      
-      // 경기 종료면 90분 고정
       if (match.status === 'FINISHED') {
         setElapsedTime(90); 
         return;
       }
 
       const now = new Date().getTime();
-      const currentYear = new Date().getFullYear(); // 2025
+      const currentYear = new Date().getFullYear(); 
 
-      // 서버에서 온 match.matchTime은 "11. 30. 23:05" (한국 시간 숫자)
-      // 여기에 연도를 붙여서 "2025. 11. 30. 23:05" 형태로 만듦
       const safeDateString = `${currentYear}. ${match.matchTime}`.replaceAll('.', '/'); 
       const start = new Date(safeDateString).getTime();
       
       const diffMs = now - start;
-      let minutes = Math.floor(diffMs / (1000 * 60)); // 물리적으로 흐른 전체 분
+      let minutes = Math.floor(diffMs / (1000 * 60)); 
 
-      // ★ [핵심] 하프타임(HT) 보정 로직
-      // 물리적 시간이 45분을 넘어가면 하프타임(15분) 및 추가시간을 고려해 보정
+      // 하프타임 보정
       if (minutes > 45) {
-        // 전반전 종료 후 ~ 후반 시작 전 (약 15분간) -> 45분으로 고정 표시
-        if (minutes <= 60) {
-           minutes = 45; 
-        } 
-        // 후반전 (60분 이후) -> 하프타임(15분) + 추가시간(약 5분) = 총 20분 차감하여 실제 경기 시간과 맞춤
-        else {
-           minutes = minutes - 20; 
-        }
+        if (minutes <= 60) minutes = 45; 
+        else minutes = minutes - 20; 
       }
-
-      // 음수 방지
       setElapsedTime(minutes < 0 ? 0 : minutes);
     };
 
     // ----------------------------------------------------------------
-    // 2. [배당률 업데이트] 초기 로딩 갭(Gap) 제거
+    // 2. ★ [수정됨] 서버 데이터 폴링 (Polling)
+    // - 가짜 계산 대신, 5초마다 서버에 "지금 배당/점수 몇이야?"라고 물어봄
     // ----------------------------------------------------------------
-    const updateOdds = () => {
-      setLiveOdds((prev) => {
-        // 서버의 스코어를 안전하게 가져옴
-        const homeScore = match.score?.home ?? 0;
-        const awayScore = match.score?.away ?? 0;
+    const fetchLatestData = async () => {
+      try {
+        // 캐시 방지를 위해 시간 파라미터(?t=...) 추가
+        const res = await fetch(`${API_BASE_URL}/api/matches?t=${Date.now()}`);
+        if (!res.ok) return;
 
-        const newOdds = calculateLiveOdds(match.odds, homeScore, awayScore);
-        
-        if (newOdds.home > prev.home) setTrend('up');
-        else if (newOdds.home < prev.home) setTrend('down');
-        else setTrend(null);
-        
-        return newOdds;
-      });
+        const allMatches = await res.json();
+        // 현재 카드에 해당하는 경기만 찾음
+        const myMatch = allMatches.find((m: any) => m.id === match.id);
+
+        if (myMatch) {
+          // 1. 배당률 업데이트 (트렌드 표시 로직 포함)
+          setLiveOdds((prev) => {
+            if (myMatch.odds.home > prev.home) setTrend('up');
+            else if (myMatch.odds.home < prev.home) setTrend('down');
+            else setTrend(null);
+            return myMatch.odds;
+          });
+
+          // 2. 스코어 업데이트 (골 들어가면 자동 반영됨!)
+          setLiveScore({
+            home: myMatch.score?.home ?? 0,
+            away: myMatch.score?.away ?? 0
+          });
+        }
+      } catch (err) {
+        console.error("실시간 데이터 동기화 실패:", err);
+      }
     };
 
-    // ★ 초기화 시점: 즉시 실행 (시간 계산 및 배당 표시)
-    updateOdds();
+    // 초기 실행
     updateGameTime();
+    // fetchLatestData(); // 필요 시 주석 해제 (초기 로딩은 props로 충분함)
 
     // ★ 주기적 실행
-    const oddsInterval = setInterval(updateOdds, 2000); // 배당은 2초마다
-    const timeInterval = setInterval(updateGameTime, 10000); // 시간은 10초마다 갱신
+    const dataInterval = setInterval(fetchLatestData, 5000); // 5초마다 서버 데이터 동기화
+    const timeInterval = setInterval(updateGameTime, 10000); // 10초마다 시간 갱신
 
     return () => {
-      clearInterval(oddsInterval);
+      clearInterval(dataInterval);
       clearInterval(timeInterval);
     };
   }, [match]);
@@ -145,7 +155,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
       matchId: match.id,
       teamName,
       selectedType: type,
-      odds: liveOdds[type],
+      odds: liveOdds[type], // 화면에 보이는 서버 배당으로 베팅
       status: match.status
     });
   };
@@ -180,7 +190,6 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             )}
           </div>
           <div className="bg-slate-950/50 px-3 py-1 rounded-full border border-slate-700/50 text-emerald-400 font-mono text-sm">
-            {/* 90분 넘어가면 90+로 표시, 아니면 계산된 시간(보정됨) 표시 */}
             {elapsedTime > 90 ? '90+' : `${elapsedTime}'`}
           </div>
         </div>
@@ -195,10 +204,10 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             <span className="font-bold text-lg text-white text-center leading-tight">{match.homeTeam}</span>
           </div>
 
-          {/* 중앙 점수 */}
+          {/* 중앙 점수 (★ state인 liveScore 사용) */}
           <div className="px-6 text-center relative">
             <div className="text-5xl font-black text-white font-mono tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-              {match.score?.home ?? 0} : {match.score?.away ?? 0}
+              {liveScore.home} : {liveScore.away}
             </div>
             <div className="text-slate-500 text-xs mt-2 uppercase tracking-widest">Current Score</div>
           </div>

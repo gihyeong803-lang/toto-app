@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useBetStore } from '../store/useBetStore';
-import { calculateLiveOdds } from '@/utils/oddsSystem';
+
+// ★ [삭제] 가짜 계산기 제거
+// import { calculateLiveOdds } from '@/utils/oddsSystem';
+
+// ★ [추가] 내 Render 서버 주소 (footballApi.ts와 동일)
+const API_BASE_URL = 'https://toto-server-f4j2.onrender.com'; 
 
 interface MatchProps {
   id: number;
@@ -18,73 +23,101 @@ interface MatchProps {
 
 export default function MatchCard({ match }: { match: MatchProps }) {
   const { addBet, bets } = useBetStore();
+  
+  // 1. 상태 관리 (서버 데이터와 동기화)
   const [liveOdds, setLiveOdds] = useState(match.odds);
+  const [liveScore, setLiveScore] = useState(match.score || { home: 0, away: 0 });
+  const [currentStatus, setCurrentStatus] = useState(match.status);
 
+  // 2. [업그레이드] 25/26 시즌 고화질 로고 매핑 함수
   const getTeamBadge = (name: string) => {
     const lowerName = name?.toLowerCase() || '';
-    const baseUrl = 'https://resources.premierleague.com/premierleague/badges';
 
-    if (lowerName.includes('arsenal')) return `${baseUrl}/t3.svg`;
-    if (lowerName.includes('villa')) return `${baseUrl}/t7.svg`;
-    if (lowerName.includes('bournemouth')) return `${baseUrl}/t91.svg`;
-    if (lowerName.includes('brentford')) return `${baseUrl}/t94.svg`;
-    if (lowerName.includes('brighton')) return `${baseUrl}/t36.svg`;
-    if (lowerName.includes('burnley')) return `${baseUrl}/t90.svg`;
-    if (lowerName.includes('chelsea')) return `${baseUrl}/t8.svg`;
-    if (lowerName.includes('palace')) return `${baseUrl}/t31.svg`;
-    if (lowerName.includes('everton')) return `${baseUrl}/t11.svg`;
-    if (lowerName.includes('fulham')) return `${baseUrl}/t54.svg`;
-    if (lowerName.includes('ipswich')) return `${baseUrl}/t40.svg`;
-    if (lowerName.includes('leicester')) return `${baseUrl}/t13.svg`;
-    if (lowerName.includes('liverpool')) return `${baseUrl}/t14.svg`;
-    if (lowerName.includes('luton')) return `${baseUrl}/t102.svg`;
-    if (lowerName.includes('city')) return `${baseUrl}/t43.svg`;
-    if (lowerName.includes('man utd') || lowerName.includes('united')) return `${baseUrl}/t1.svg`;
-    if (lowerName.includes('newcastle')) return `${baseUrl}/t4.svg`;
-    if (lowerName.includes('forest') || lowerName.includes('nottingham')) return `${baseUrl}/t17.svg`;
-    if (lowerName.includes('southampton')) return `${baseUrl}/t20.svg`;
-    if (lowerName.includes('sheffield')) return `${baseUrl}/t49.svg`;
-    if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return `${baseUrl}/t6.svg`;
-    if (lowerName.includes('west ham')) return `${baseUrl}/t21.svg`;
-    if (lowerName.includes('wolves')) return `${baseUrl}/t39.svg`;
+    // 1. 챔피언십 및 승격 유력 팀 (ESPN 고화질)
+    if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+    if (lowerName.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
+    if (lowerName.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
+    if (lowerName.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
+    if (lowerName.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
+    if (lowerName.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
     
-    if (lowerName.includes('leeds')) return `${baseUrl}/t2.svg`;      
-    if (lowerName.includes('watford')) return `${baseUrl}/t57.svg`;
-    if (lowerName.includes('norwich')) return `${baseUrl}/t45.svg`;
-    if (lowerName.includes('sunderland')) return `${baseUrl}/t56.svg`;
+    // 2. 프리미어리그 현역 (Wiki SVG)
+    if (lowerName.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
+    if (lowerName.includes('aston villa') || lowerName.includes('villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg';
+    if (lowerName.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
+    if (lowerName.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
+    if (lowerName.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
+    if (lowerName.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
+    if (lowerName.includes('palace')) return 'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg';
+    if (lowerName.includes('everton')) return 'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg';
+    if (lowerName.includes('fulham')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg';
+    if (lowerName.includes('ipswich')) return 'https://upload.wikimedia.org/wikipedia/en/8/82/Ipswich_Town_FC_logo.svg';
+    if (lowerName.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
+    if (lowerName.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg'; 
+    if (lowerName.includes('man utd') || lowerName.includes('united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg'; 
+    if (lowerName.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
+    if (lowerName.includes('nottingham') || lowerName.includes('forest')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
+    if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
+    if (lowerName.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
+    if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
 
     return `https://assets.codepen.io/t-1/premier-league-logo.png`; 
   };
 
   useEffect(() => {
-    if (match.status === 'LIVE') {
-      const interval = setInterval(() => {
-        setLiveOdds((prevOdds) => {
-          const h = match.score?.home ?? 0;
-          const a = match.score?.away ?? 0;
-          return calculateLiveOdds(match.odds, h, a);
-        });
-      }, 3000);
-      return () => clearInterval(interval);
-    } else {
-      setLiveOdds(match.odds);
-    }
-  }, [match.status, match.score, match.odds]);
+    // ----------------------------------------------------------------
+    // ★ [수정됨] 서버 데이터 폴링 (가짜 계산 대신 실제 데이터 가져오기)
+    // ----------------------------------------------------------------
+    const fetchLatestData = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/matches?t=${Date.now()}`);
+        if (!res.ok) return;
 
-  const isBettingAllowed = match.status !== 'FINISHED';
+        const allMatches = await res.json();
+        const myMatch = allMatches.find((m: any) => m.id === match.id);
+
+        if (myMatch) {
+          // 서버 데이터로 상태 업데이트
+          setLiveOdds(myMatch.odds);
+          setLiveScore({
+            home: myMatch.score?.home ?? 0,
+            away: myMatch.score?.away ?? 0
+          });
+          
+          // 상태값 변환 (백엔드 -> 프론트)
+          let displayStatus = myMatch.status;
+          if (['SCHEDULED', 'TIMED'].includes(myMatch.status)) displayStatus = 'UPCOMING';
+          if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(myMatch.status)) displayStatus = 'LIVE';
+          
+          setCurrentStatus(displayStatus);
+        }
+      } catch (err) {
+        console.error("데이터 동기화 실패");
+      }
+    };
+
+    // 라이브 경기면 5초마다, 아니면 15초마다 갱신 (서버 부하 조절)
+    const intervalTime = currentStatus === 'LIVE' ? 5000 : 15000;
+    const interval = setInterval(fetchLatestData, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [match.id, currentStatus]);
+
+  const isBettingAllowed = currentStatus !== 'FINISHED';
 
   const handleBet = (selection: 'home' | 'draw' | 'away', odds: number, label: string) => {
     if (!isBettingAllowed) {
       alert("종료된 경기는 베팅할 수 없습니다.");
       return;
     }
+    
     addBet({
       id: `${match.id}-${selection}`,
       matchId: match.id,
       teamName: label,
       selectedType: selection,
       odds: odds,
-      status: match.status
+      status: currentStatus as any
     });
   };
 
@@ -114,7 +147,7 @@ export default function MatchCard({ match }: { match: MatchProps }) {
            <span className="text-slate-300 text-xs font-bold uppercase tracking-wider">Premier League</span>
         </div>
         <div className="text-slate-400 text-xs font-mono">
-           {match.status === 'LIVE' && <span className="text-red-500 animate-pulse font-bold mr-2">● LIVE</span>}
+           {currentStatus === 'LIVE' && <span className="text-red-500 animate-pulse font-bold mr-2">● LIVE</span>}
            {match.matchTime}
         </div>
       </div>
@@ -123,7 +156,6 @@ export default function MatchCard({ match }: { match: MatchProps }) {
         
         {/* Home Team */}
         <div className="flex flex-col items-center gap-4 w-1/3">
-          {/* ★ [수정됨] 모바일에서 로고 크기 작게(w-12), PC에선 원래대로(md:w-20) */}
           <div className="w-12 h-12 md:w-20 md:h-20 relative drop-shadow-2xl transition-transform hover:scale-110">
             <img 
               src={match.homeLogo || getTeamBadge(match.homeTeam)} 
@@ -131,7 +163,6 @@ export default function MatchCard({ match }: { match: MatchProps }) {
               className="w-full h-full object-contain" 
             />
           </div>
-          {/* ★ [수정됨] 모바일에서 글자 작게(text-[10px]), 줄바꿈 허용(break-words) */}
           <span className="text-white font-bold text-[10px] md:text-sm text-center leading-tight break-words w-full px-1">
             {match.homeTeam}
           </span>
@@ -139,13 +170,13 @@ export default function MatchCard({ match }: { match: MatchProps }) {
 
         {/* VS / Score */}
         <div className="flex flex-col items-center justify-center w-1/3">
-          {match.status === 'UPCOMING' ? (
+          {currentStatus === 'UPCOMING' ? (
              <span className="text-2xl md:text-3xl font-black text-slate-600 italic opacity-50">VS</span>
           ) : (
              <div className="flex gap-3 items-center">
-               <span className="text-2xl md:text-4xl font-bold text-white">{match.score?.home}</span>
+               <span className="text-2xl md:text-4xl font-bold text-white">{liveScore.home}</span>
                <span className="text-slate-600 text-xl md:text-2xl">:</span>
-               <span className="text-2xl md:text-4xl font-bold text-white">{match.score?.away}</span>
+               <span className="text-2xl md:text-4xl font-bold text-white">{liveScore.away}</span>
              </div>
           )}
         </div>

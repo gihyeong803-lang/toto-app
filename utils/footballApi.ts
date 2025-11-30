@@ -1,6 +1,6 @@
-// src/utils/footballApi.ts 전체 교체
+// src/utils/footballApi.ts
 
-// ★ [중요] 외부 API 대신 내 Render 서버 주소를 사용
+// 내 Render 서버 주소
 const API_BASE_URL = 'https://toto-server-f4j2.onrender.com'; 
 
 export interface MatchData {
@@ -15,45 +15,58 @@ export interface MatchData {
   odds: { home: number; draw: number; away: number };
 }
 
-// 로고 매핑 함수 (백엔드 데이터엔 로고 URL이 없으므로 프론트에서 처리)
+// ★ [핵심 변경] 25/26 시즌 대비 최신 로고 매핑 (ESPN + 위키피디아 소스 사용)
 const getTeamBadge = (name: string) => {
   const lowerName = name?.toLowerCase() || '';
-  const baseUrl = 'https://resources.premierleague.com/premierleague/badges';
 
-  if (lowerName.includes('arsenal')) return `${baseUrl}/t3.svg`;
-  if (lowerName.includes('villa')) return `${baseUrl}/t7.svg`;
-  if (lowerName.includes('bournemouth')) return `${baseUrl}/t91.svg`;
-  if (lowerName.includes('brentford')) return `${baseUrl}/t94.svg`;
-  if (lowerName.includes('brighton')) return `${baseUrl}/t36.svg`;
-  if (lowerName.includes('burnley')) return `${baseUrl}/t90.svg`;
-  if (lowerName.includes('chelsea')) return `${baseUrl}/t8.svg`;
-  if (lowerName.includes('palace')) return `${baseUrl}/t31.svg`;
-  if (lowerName.includes('everton')) return `${baseUrl}/t11.svg`;
-  if (lowerName.includes('fulham')) return `${baseUrl}/t54.svg`;
-  if (lowerName.includes('ipswich')) return `${baseUrl}/t40.svg`;
-  if (lowerName.includes('leicester')) return `${baseUrl}/t13.svg`;
-  if (lowerName.includes('liverpool')) return `${baseUrl}/t14.svg`;
-  if (lowerName.includes('luton')) return `${baseUrl}/t102.svg`;
-  if (lowerName.includes('city')) return `${baseUrl}/t43.svg`;
-  if (lowerName.includes('man utd') || lowerName.includes('united')) return `${baseUrl}/t1.svg`;
-  if (lowerName.includes('newcastle')) return `${baseUrl}/t4.svg`;
-  if (lowerName.includes('forest') || lowerName.includes('nottingham')) return `${baseUrl}/t17.svg`;
-  if (lowerName.includes('southampton')) return `${baseUrl}/t20.svg`;
-  if (lowerName.includes('sheffield')) return `${baseUrl}/t49.svg`;
-  if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return `${baseUrl}/t6.svg`;
-  if (lowerName.includes('west ham')) return `${baseUrl}/t21.svg`;
-  if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return `${baseUrl}/t39.svg`;
-  
-  return `https://assets.codepen.io/t-1/premier-league-logo.png`; 
+  // 1. 챔피언십 및 승격 유력 팀 (ESPN 고화질 소스)
+  if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+  if (lowerName.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
+  if (lowerName.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
+  if (lowerName.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
+  if (lowerName.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
+  if (lowerName.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
+  if (lowerName.includes('west brom')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/383.png';
+  if (lowerName.includes('stoke')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/336.png';
+  if (lowerName.includes('hull')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/306.png';
+  if (lowerName.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
+  if (lowerName.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
+  if (lowerName.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
+  if (lowerName.includes('sheffield')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/398.png';
+  if (lowerName.includes('luton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/301.png';
+
+  // 2. 프리미어리그 현역 팀 (위키피디아 SVG 사용 - 깨짐 없음 & 최신 반영)
+  // 특히 아스톤 빌라는 '방패 모양' 신형 로고가 나옵니다.
+  if (lowerName.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
+  if (lowerName.includes('aston villa') || lowerName.includes('villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg';
+  if (lowerName.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
+  if (lowerName.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
+  if (lowerName.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
+  if (lowerName.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
+  if (lowerName.includes('palace')) return 'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg';
+  if (lowerName.includes('everton')) return 'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg';
+  if (lowerName.includes('fulham')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg';
+  if (lowerName.includes('ipswich')) return 'https://upload.wikimedia.org/wikipedia/en/8/82/Ipswich_Town_FC_logo.svg';
+  if (lowerName.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
+  if (lowerName.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg'; // Man City
+  if (lowerName.includes('man utd') || lowerName.includes('united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg'; // Man Utd
+  if (lowerName.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
+  if (lowerName.includes('nottingham') || lowerName.includes('forest')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
+  if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
+  if (lowerName.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
+  if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
+
+  // 기본 이미지 (프리미어리그 사자 로고)
+  return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
 };
 
 export async function getRealMatches(): Promise<MatchData[]> {
   try {
-    // 1. 내 Render 서버의 DB 데이터 요청 (force-live 등이 반영된 데이터)
+    // 백엔드 서버에서 데이터 가져오기 (실시간 반영)
     const response = await fetch(`${API_BASE_URL}/api/matches`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      next: { revalidate: 0 } // ★ 0초 캐시 (실시간 반영을 위해 캐시 끄기)
+      next: { revalidate: 0 } 
     });
 
     if (!response.ok) {
@@ -65,29 +78,26 @@ export async function getRealMatches(): Promise<MatchData[]> {
 
     if (!matchesData || matchesData.length === 0) return [];
 
-    // 2. 데이터 가공 (DB 데이터 -> 프론트엔드 포맷)
+    // 데이터 변환
     const matches: MatchData[] = matchesData.map((item: any) => {
-      // DB 상태값 매핑 (SCHEDULED -> UPCOMING 등 필요 시 변환)
       let displayStatus = item.status;
-      if (item.status === 'SCHEDULED' || item.status === 'TIMED') displayStatus = 'UPCOMING';
-      if (item.status === 'IN_PLAY' || item.status === 'PAUSED') displayStatus = 'LIVE';
+      if (['SCHEDULED', 'TIMED'].includes(item.status)) displayStatus = 'UPCOMING';
+      if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(item.status)) displayStatus = 'LIVE';
 
       return {
         id: item.id,
-        homeTeam: item.home, // DB 필드명: home
-        awayTeam: item.away, // DB 필드명: away
+        homeTeam: item.home,
+        awayTeam: item.away,
+        // ★ 여기서 최신 로고 함수 사용
         homeLogo: getTeamBadge(item.home),
         awayLogo: getTeamBadge(item.away),
         
-        // DB에 이미 "12. 01. 23:05" 처럼 한국 시간 문자열이 저장되어 있음
         matchTime: item.matchTime || item.date + ' ' + item.time, 
-        
         status: displayStatus,
         score: {
           home: item.score?.home ?? 0,
           away: item.score?.away ?? 0
         },
-        // DB에 저장된 배당률 사용
         odds: item.odds || { home: 1.0, draw: 1.0, away: 1.0 }
       };
     });
