@@ -11,7 +11,7 @@ interface MatchProps {
   awayTeam: string;
   homeLogo?: string;
   awayLogo?: string;
-  matchTime: string; // 예: "11. 30. 02:30" (서버에서 연도 없이 옴)
+  matchTime: string; // 예: "11. 30. 23:05" (서버에서 계산된 한국 시간 문자열)
   status: 'LIVE' | 'UPCOMING' | 'FINISHED';
   odds: { home: number; draw: number; away: number };
   score?: { home: number; away: number };
@@ -25,7 +25,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
   const [trend, setTrend] = useState<'up' | 'down' | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // 로고 매핑 함수
+  // 로고 매핑 함수 (UpcomingPage와 동일한 로직)
   const getTeamBadge = (name: string) => {
     const lowerName = name?.toLowerCase() || '';
     const baseUrl = 'https://resources.premierleague.com/premierleague/badges';
@@ -63,7 +63,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
 
   useEffect(() => {
     // ----------------------------------------------------------------
-    // 1. [시간 계산 로직] 하프타임 보정 적용 (108분 -> 88분)
+    // 1. [시간 계산 로직] 서버에서 온 한국 시간 문자열을 파싱 + 하프타임 보정
     // ----------------------------------------------------------------
     const updateGameTime = () => {
       // 경기 전이면 0분
@@ -81,7 +81,8 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
       const now = new Date().getTime();
       const currentYear = new Date().getFullYear(); // 2025
 
-      // 날짜 파싱: "11. 30. 02:30" -> "2025/11/30 02:30"
+      // 서버에서 온 match.matchTime은 "11. 30. 23:05" (한국 시간 숫자)
+      // 여기에 연도를 붙여서 "2025. 11. 30. 23:05" 형태로 만듦
       const safeDateString = `${currentYear}. ${match.matchTime}`.replaceAll('.', '/'); 
       const start = new Date(safeDateString).getTime();
       
@@ -89,18 +90,19 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
       let minutes = Math.floor(diffMs / (1000 * 60)); // 물리적으로 흐른 전체 분
 
       // ★ [핵심] 하프타임(HT) 보정 로직
+      // 물리적 시간이 45분을 넘어가면 하프타임(15분) 및 추가시간을 고려해 보정
       if (minutes > 45) {
         // 전반전 종료 후 ~ 후반 시작 전 (약 15분간) -> 45분으로 고정 표시
         if (minutes <= 60) {
            minutes = 45; 
         } 
-        // 후반전 (60분 이후) -> 하프타임(15분) + 추가시간(약 5분) = 총 20분 차감
+        // 후반전 (60분 이후) -> 하프타임(15분) + 추가시간(약 5분) = 총 20분 차감하여 실제 경기 시간과 맞춤
         else {
            minutes = minutes - 20; 
         }
       }
 
-      // 음수 방지 및 설정
+      // 음수 방지
       setElapsedTime(minutes < 0 ? 0 : minutes);
     };
 
@@ -109,7 +111,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     // ----------------------------------------------------------------
     const updateOdds = () => {
       setLiveOdds((prev) => {
-        // 서버의 hScore 오류와 무관하게 프론트에서는 match.score를 사용하므로 안전함
+        // 서버의 스코어를 안전하게 가져옴
         const homeScore = match.score?.home ?? 0;
         const awayScore = match.score?.away ?? 0;
 

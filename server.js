@@ -291,16 +291,19 @@ const fetchFixtures = async () => {
             const homeScore = apiMatch.score.fullTime.home ?? 0;
             const awayScore = apiMatch.score.fullTime.away ?? 0;
 
-            // -----------------------------------------------------------
-            // ★ [최종 해결책] 수동으로 9시간 더하기 (서버 환경 무시)
-            // -----------------------------------------------------------
-            const utcDate = new Date(apiMatch.utcDate); // 예: 14:05 (UTC)
+            // ==================================================================
+            // ★ [최종 해결] 서버 환경 무시하고 강제로 한국 시간(KST) 만들기
+            // ==================================================================
             
-            // 1. 9시간(ms)을 더해서 한국 시간 객체를 만듦
-            const KST_OFFSET = 9 * 60 * 60 * 1000; 
-            const kstDate = new Date(utcDate.getTime() + KST_OFFSET); // 예: 23:05 (시간값 자체를 변조)
+            // 1. API가 준 원본 시간 (UTC)
+            const originDate = new Date(apiMatch.utcDate);
+            
+            // 2. 9시간(밀리초)을 더함: 영국 시간이든 미국 시간이든 상관없이 한국 시간 숫자가 됨
+            const KST_OFFSET = 9 * 60 * 60 * 1000;
+            const kstDate = new Date(originDate.getTime() + KST_OFFSET);
 
-            // 2. 변조된 시간에서 숫자만 뽑아냄 (getUTC 메서드 사용 필수)
+            // 3. 변조된 시간에서 숫자 추출 (반드시 getUTC 메서드 사용)
+            // (이미 9시간을 더했으므로 UTC 메서드로 뽑아야 한국 시간이 나옴)
             const month = (kstDate.getUTCMonth() + 1).toString().padStart(2, '0');
             const day = kstDate.getUTCDate().toString().padStart(2, '0');
             const hour = kstDate.getUTCHours().toString().padStart(2, '0');
@@ -308,10 +311,11 @@ const fetchFixtures = async () => {
             const second = kstDate.getUTCSeconds().toString().padStart(2, '0');
             const year = kstDate.getUTCFullYear();
 
-            // 3. 프론트엔드용 포맷 "11. 30. 23:05" (한국 시간 숫자값 강제 주입)
+            // 4. 프론트엔드가 원하는 "MM. DD. HH:mm" 형식으로 조립
+            // 결과 예시: "11. 30. 23:05" (한국 시간)
             const formattedMatchTime = `${month}. ${day}. ${hour}:${minute}`;
             
-            // 4. DB 저장용 (기존 필드 유지)
+            // 5. DB 저장용 추가 필드
             const kstDateString = `${year}. ${month}. ${day}.`;
             const kstTimeString = `${hour}:${minute}:${second}`;
 
@@ -321,9 +325,10 @@ const fetchFixtures = async () => {
                 home: apiMatch.homeTeam.name,
                 away: apiMatch.awayTeam.name,
                 
-                // ★ 강제로 계산된 한국 시간이 저장됨
+                // ★ 강제로 만들어낸 한국 시간이 저장됩니다.
                 matchTime: formattedMatchTime, 
-                date: kstDateString, 
+                
+                date: kstDateString,
                 time: kstTimeString,
                 
                 status: apiMatch.status,
@@ -337,6 +342,7 @@ const fetchFixtures = async () => {
             };
 
             await Match.findOneAndUpdate({ id: apiMatch.id }, matchData, { upsert: true, new: true });
+            
            
             
             if (apiMatch.status === 'FINISHED') {
@@ -621,18 +627,72 @@ app.post('/api/check/nickname', async (req, res) => {
     }
 });
 
+// server.js의 app.post('/api/bet', ...) 부분을 이 코드로 덮어씌우세요.
+
 app.post('/api/bet', async (req, res) => {
     const { userid, stake, ticket } = req.body;
     const betAmount = parseInt(stake);
+
     try {
         const user = await User.findOne({ userid });
         if (!user || user.money < betAmount) return res.json({ success: false, message: '잔액 부족' });
 
-        const matchInfo = await Match.findOne({ id: ticket.matchId });
+        const matchIdToCheck = ticket.matchId || (ticket.items && ticket.items[0].matchId);
+        const matchInfo = await Match.findOne({ id: matchIdToCheck });
+
+        if (!matchInfo) {
+            return res.json({ success: false, message: '경기 정보를 찾을 수 없습니다.' });
+        }
+
+        // 디버깅 정보를 담을 변수
+        let debugInfo = {};
+
+        // ==================================================================
+        // ★ [15분 차단 로직] 계산 결과를 프론트엔드로 전송
+        // ==================================================================
+        if (matchInfo.status !== 'LIVE') {
+            const now = new Date();
+            const utcNow = now.getTime(); 
+            const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 한국 시간
+
+            const parts = matchInfo.matchTime.match(/\d+/g);
+            let matchTimeVal = 0;
+            
+            if (parts && parts.length >= 4) {
+                if (parts[0].length === 4) { // 2025...
+                    matchTimeVal = Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
+                } else { // 12...
+                    const currentYear = new Date().getFullYear();
+                    matchTimeVal = Date.UTC(currentYear, parseInt(parts[0]) - 1, parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]));
+                }
+            }
+
+            const diffMs = matchTimeVal - kstNowVal;
+            const minutesRemaining = Math.floor(diffMs / (1000 * 60));
+
+            // ★ [핵심] 이 정보를 브라우저로 보냅니다
+            debugInfo = {
+                경기이름: `${matchInfo.home} vs ${matchInfo.away}`,
+                경기시간_문자열: matchInfo.matchTime,
+                경기시간_타임스탬프: matchTimeVal,
+                현재서버시간_KST: kstNowVal,
+                남은시간_분: minutesRemaining,
+                차단기준: "15분 이하"
+            };
+
+            if (minutesRemaining <= 15) {
+                return res.json({ 
+                    success: false, 
+                    message: `경기 시작 ${minutesRemaining}분 전입니다. 베팅이 마감되었습니다.`,
+                    debug: debugInfo // ★ 에러 나도 디버그 정보 보여줌
+                });
+            }
+        }
+        // ==================================================================
+
         const matchName = matchInfo ? `${matchInfo.home} vs ${matchInfo.away}` : 'Unknown';
 
         // 중복 배팅 체크 (단폴더 기준)
-        const matchIdToCheck = ticket.matchId || (ticket.items && ticket.items[0].matchId);
         if (await Bet.findOne({ userId: userid, matchId: matchIdToCheck })) {
             return res.json({ success: false, message: '이미 배팅한 경기입니다.' });
         }
@@ -651,7 +711,11 @@ app.post('/api/bet', async (req, res) => {
         }).save();
 
         res.json({ success: true, newBalance: user.money });
-    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ success: false, message: e.message }); 
+    }
 });
 
 // [보안 패치] 배팅 내역 조회 (아이디 없으면 빈 목록 반환)
