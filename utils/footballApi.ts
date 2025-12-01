@@ -34,7 +34,7 @@ export interface MatchData {
     // 3. 나머지 프리미어리그 팀
     if (lowerName.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
     // ★ [수정] 아스톤 빌라 (Aston Villa) 확실하게 잡기
-    if (lowerName.includes('aston') || lowerName.includes('villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg';
+    if (lowerName.includes('aston') || lowerName.includes('villa')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/362.png';
     
     if (lowerName.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
     if (lowerName.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
