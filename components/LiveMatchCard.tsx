@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 // import Image from 'next/image'; 
 import { useBetStore } from '../store/useBetStore';
 
-// ★ [삭제됨] 가짜 배당 계산기는 이제 필요 없습니다.
+// ★ [수정] 가짜 계산기 import 삭제 (이제 필요 없음)
 // import { calculateLiveOdds } from '@/utils/oddsSystem';
 
-// ★ [추가] 내 Render 서버 주소 (footballApi.ts와 동일하게 설정)
+// ★ [유지] 내 Render 서버 주소
 const API_BASE_URL = 'https://toto-server-f4j2.onrender.com'; 
 
 interface MatchProps {
@@ -16,7 +16,7 @@ interface MatchProps {
   awayTeam: string;
   homeLogo?: string;
   awayLogo?: string;
-  matchTime: string; // "11. 30. 23:05" (한국 시간 문자열)
+  matchTime: string; // "11. 30. 23:05"
   status: 'LIVE' | 'UPCOMING' | 'FINISHED';
   odds: { home: number; draw: number; away: number };
   score?: { home: number; away: number };
@@ -25,54 +25,63 @@ interface MatchProps {
 export default function LiveMatchCard({ match }: { match: MatchProps }) {
   const { addBet, bets } = useBetStore();
   
-  // 1. 배당률 상태 (초기값은 props에서)
+  // 상태 관리
   const [liveOdds, setLiveOdds] = useState(match.odds);
-  // 2. ★ [추가] 실시간 스코어 상태 (서버에서 가져온 최신 점수 반영용)
   const [liveScore, setLiveScore] = useState(match.score || { home: 0, away: 0 });
-  
   const [trend, setTrend] = useState<'up' | 'down' | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // 로고 매핑 함수 (유지)
+  // ★ [핵심 업데이트] 로고 매핑 함수 (뉴캐슬, 웨스트햄, 아스톤빌라 버그 수정됨)
   const getTeamBadge = (name: string) => {
     const lowerName = name?.toLowerCase() || '';
-    // ... (기존 로고 로직 그대로 유지) ...
-    const baseUrl = 'https://resources.premierleague.com/premierleague/badges';
-    
-    if (lowerName.includes('arsenal')) return `${baseUrl}/t3.svg`;
-    if (lowerName.includes('villa')) return `${baseUrl}/t7.svg`;
-    if (lowerName.includes('bournemouth')) return `${baseUrl}/t91.svg`;
-    if (lowerName.includes('brentford')) return `${baseUrl}/t94.svg`;
-    if (lowerName.includes('brighton')) return `${baseUrl}/t36.svg`;
-    if (lowerName.includes('burnley')) return `${baseUrl}/t90.svg`;
-    if (lowerName.includes('chelsea')) return `${baseUrl}/t8.svg`;
-    if (lowerName.includes('palace')) return `${baseUrl}/t31.svg`;
-    if (lowerName.includes('everton')) return `${baseUrl}/t11.svg`;
-    if (lowerName.includes('fulham')) return `${baseUrl}/t54.svg`;
-    if (lowerName.includes('ipswich')) return `${baseUrl}/t40.svg`;
-    if (lowerName.includes('leicester')) return `${baseUrl}/t13.svg`;
-    if (lowerName.includes('liverpool')) return `${baseUrl}/t14.svg`;
-    if (lowerName.includes('luton')) return `${baseUrl}/t102.svg`;
-    if (lowerName.includes('city')) return `${baseUrl}/t43.svg`;
-    if (lowerName.includes('man utd') || lowerName.includes('united')) return `${baseUrl}/t1.svg`;
-    if (lowerName.includes('newcastle')) return `${baseUrl}/t4.svg`;
-    if (lowerName.includes('forest') || lowerName.includes('nottingham')) return `${baseUrl}/t17.svg`;
-    if (lowerName.includes('southampton')) return `${baseUrl}/t20.svg`;
-    if (lowerName.includes('sheffield')) return `${baseUrl}/t49.svg`;
-    if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return `${baseUrl}/t6.svg`;
-    if (lowerName.includes('west ham')) return `${baseUrl}/t21.svg`;
-    if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return `${baseUrl}/t39.svg`;
-    
-    // 기타 팀들
-    if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+
+    // 1. United 계열 (맨유보다 먼저 체크해야 함!)
+    if (lowerName.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
+    if (lowerName.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
+    if (lowerName.includes('sheffield')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/398.png';
     if (lowerName.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
     
-    return `https://assets.codepen.io/t-1/premier-league-logo.png`; 
+    // 2. 맨체스터 팀
+    if (lowerName.includes('man city') || lowerName.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg';
+    if (lowerName.includes('man utd') || lowerName.includes('manchester united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg';
+
+    // 3. 나머지 프리미어리그 팀
+    if (lowerName.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
+    if (lowerName.includes('aston') || lowerName.includes('villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg'; // ★ 아스톤 빌라 수정됨
+    if (lowerName.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
+    if (lowerName.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
+    if (lowerName.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
+    if (lowerName.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
+    if (lowerName.includes('palace')) return 'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg';
+    if (lowerName.includes('everton')) return 'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg';
+    if (lowerName.includes('fulham')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg';
+    if (lowerName.includes('ipswich')) return 'https://upload.wikimedia.org/wikipedia/en/8/82/Ipswich_Town_FC_logo.svg';
+    if (lowerName.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
+    if (lowerName.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
+    if (lowerName.includes('luton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/301.png';
+    if (lowerName.includes('forest') || lowerName.includes('nottingham')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
+    if (lowerName.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
+    if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
+    if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
+    
+    // 4. 기타
+    if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
+    if (lowerName.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
+    if (lowerName.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
+    if (lowerName.includes('west brom')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/383.png';
+    if (lowerName.includes('stoke')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/336.png';
+    if (lowerName.includes('hull')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/306.png';
+    if (lowerName.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
+    if (lowerName.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
+    if (lowerName.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
+
+    // 기본 이미지
+    return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
   };
 
   useEffect(() => {
     // ----------------------------------------------------------------
-    // 1. [시간 계산 로직] (기존 유지)
+    // 1. [시간 계산 로직] (기존 기능 100% 유지)
     // ----------------------------------------------------------------
     const updateGameTime = () => {
       if (match.status === 'UPCOMING') {
@@ -102,21 +111,18 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     };
 
     // ----------------------------------------------------------------
-    // 2. ★ [수정됨] 서버 데이터 폴링 (Polling)
-    // - 가짜 계산 대신, 5초마다 서버에 "지금 배당/점수 몇이야?"라고 물어봄
+    // 2. [서버 데이터 동기화] (기존 기능 100% 유지)
     // ----------------------------------------------------------------
     const fetchLatestData = async () => {
       try {
-        // 캐시 방지를 위해 시간 파라미터(?t=...) 추가
         const res = await fetch(`${API_BASE_URL}/api/matches?t=${Date.now()}`);
         if (!res.ok) return;
 
         const allMatches = await res.json();
-        // 현재 카드에 해당하는 경기만 찾음
         const myMatch = allMatches.find((m: any) => m.id === match.id);
 
         if (myMatch) {
-          // 1. 배당률 업데이트 (트렌드 표시 로직 포함)
+          // 배당률 업데이트
           setLiveOdds((prev) => {
             if (myMatch.odds.home > prev.home) setTrend('up');
             else if (myMatch.odds.home < prev.home) setTrend('down');
@@ -124,7 +130,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             return myMatch.odds;
           });
 
-          // 2. 스코어 업데이트 (골 들어가면 자동 반영됨!)
+          // 스코어 업데이트
           setLiveScore({
             home: myMatch.score?.home ?? 0,
             away: myMatch.score?.away ?? 0
@@ -137,11 +143,10 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
 
     // 초기 실행
     updateGameTime();
-    // fetchLatestData(); // 필요 시 주석 해제 (초기 로딩은 props로 충분함)
 
-    // ★ 주기적 실행
-    const dataInterval = setInterval(fetchLatestData, 5000); // 5초마다 서버 데이터 동기화
-    const timeInterval = setInterval(updateGameTime, 10000); // 10초마다 시간 갱신
+    // 주기적 실행
+    const dataInterval = setInterval(fetchLatestData, 5000); // 5초마다 데이터 갱신
+    const timeInterval = setInterval(updateGameTime, 10000); // 10초마다 시간 표시 갱신
 
     return () => {
       clearInterval(dataInterval);
@@ -155,7 +160,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
       matchId: match.id,
       teamName,
       selectedType: type,
-      odds: liveOdds[type], // 화면에 보이는 서버 배당으로 베팅
+      odds: liveOdds[type], // 화면에 보이는 최신 배당으로 베팅
       status: match.status
     });
   };
@@ -204,7 +209,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             <span className="font-bold text-lg text-white text-center leading-tight">{match.homeTeam}</span>
           </div>
 
-          {/* 중앙 점수 (★ state인 liveScore 사용) */}
+          {/* 중앙 점수 */}
           <div className="px-6 text-center relative">
             <div className="text-5xl font-black text-white font-mono tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
               {liveScore.home} : {liveScore.away}
