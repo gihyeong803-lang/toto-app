@@ -1,13 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// import Image from 'next/image'; 
 import { useBetStore } from '../store/useBetStore';
 
-// ★ [수정] 가짜 계산기 import 삭제 (이제 필요 없음)
-// import { calculateLiveOdds } from '@/utils/oddsSystem';
-
-// ★ [유지] 내 Render 서버 주소
+// 내 Render 서버 주소
 const API_BASE_URL = 'https://toto-server-f4j2.onrender.com'; 
 
 interface MatchProps {
@@ -28,26 +24,26 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
   // 상태 관리
   const [liveOdds, setLiveOdds] = useState(match.odds);
   const [liveScore, setLiveScore] = useState(match.score || { home: 0, away: 0 });
+  // ★ [추가] 실시간 상태 동기화 (경기가 끝나면 화면도 끝나야 함)
+  const [currentStatus, setCurrentStatus] = useState(match.status);
+  
   const [trend, setTrend] = useState<'up' | 'down' | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  // ★ [핵심 업데이트] 로고 매핑 함수 (뉴캐슬, 웨스트햄, 아스톤빌라 버그 수정됨)
+  // 로고 매핑 함수 (최신 유지)
   const getTeamBadge = (name: string) => {
     const lowerName = name?.toLowerCase() || '';
 
-    // 1. United 계열 (맨유보다 먼저 체크해야 함!)
     if (lowerName.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
     if (lowerName.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
     if (lowerName.includes('sheffield')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/398.png';
     if (lowerName.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
     
-    // 2. 맨체스터 팀
     if (lowerName.includes('man city') || lowerName.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg';
     if (lowerName.includes('man utd') || lowerName.includes('manchester united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg';
 
-    // 3. 나머지 프리미어리그 팀
     if (lowerName.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
-    if (lowerName.includes('aston') || lowerName.includes('villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg'; // ★ 아스톤 빌라 수정됨
+    if (lowerName.includes('aston') || lowerName.includes('villa')) return 'https://upload.wikimedia.org/wikipedia/en/9/9f/Aston_Villa_logo.svg';
     if (lowerName.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
     if (lowerName.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
     if (lowerName.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
@@ -64,7 +60,6 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
     if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
     
-    // 4. 기타
     if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
     if (lowerName.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
     if (lowerName.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
@@ -75,20 +70,20 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     if (lowerName.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
     if (lowerName.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
 
-    // 기본 이미지
     return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
   };
 
   useEffect(() => {
     // ----------------------------------------------------------------
-    // 1. [시간 계산 로직] (기존 기능 100% 유지)
+    // 1. [시간 계산 로직] currentStatus 사용하도록 변경
     // ----------------------------------------------------------------
     const updateGameTime = () => {
-      if (match.status === 'UPCOMING') {
+      // ★ [수정] match.status 대신 실시간으로 변하는 currentStatus 사용
+      if (currentStatus === 'UPCOMING') {
         setElapsedTime(0);
         return;
       }
-      if (match.status === 'FINISHED') {
+      if (currentStatus === 'FINISHED') {
         setElapsedTime(90); 
         return;
       }
@@ -102,7 +97,6 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
       const diffMs = now - start;
       let minutes = Math.floor(diffMs / (1000 * 60)); 
 
-      // 하프타임 보정
       if (minutes > 45) {
         if (minutes <= 60) minutes = 45; 
         else minutes = minutes - 20; 
@@ -111,7 +105,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     };
 
     // ----------------------------------------------------------------
-    // 2. [서버 데이터 동기화] (기존 기능 100% 유지)
+    // 2. [서버 데이터 폴링] 상태(status) 업데이트 추가
     // ----------------------------------------------------------------
     const fetchLatestData = async () => {
       try {
@@ -122,7 +116,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
         const myMatch = allMatches.find((m: any) => m.id === match.id);
 
         if (myMatch) {
-          // 배당률 업데이트
+          // 배당 & 스코어 업데이트
           setLiveOdds((prev) => {
             if (myMatch.odds.home > prev.home) setTrend('up');
             else if (myMatch.odds.home < prev.home) setTrend('down');
@@ -130,38 +124,54 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             return myMatch.odds;
           });
 
-          // 스코어 업데이트
           setLiveScore({
             home: myMatch.score?.home ?? 0,
             away: myMatch.score?.away ?? 0
           });
+
+          // ★ [핵심 추가] 경기 상태도 업데이트해야 끝났을 때 알 수 있음
+          let displayStatus = myMatch.status;
+          if (['SCHEDULED', 'TIMED'].includes(myMatch.status)) displayStatus = 'UPCOMING';
+          if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(myMatch.status)) displayStatus = 'LIVE';
+          
+          setCurrentStatus(displayStatus); // 상태 동기화
         }
       } catch (err) {
         console.error("실시간 데이터 동기화 실패:", err);
       }
     };
 
-    // 초기 실행
     updateGameTime();
 
-    // 주기적 실행
-    const dataInterval = setInterval(fetchLatestData, 5000); // 5초마다 데이터 갱신
-    const timeInterval = setInterval(updateGameTime, 10000); // 10초마다 시간 표시 갱신
+    const dataInterval = setInterval(fetchLatestData, 5000); 
+    const timeInterval = setInterval(updateGameTime, 10000); 
 
     return () => {
       clearInterval(dataInterval);
       clearInterval(timeInterval);
     };
-  }, [match]);
+  }, [match, currentStatus]); // ★ 의존성에 currentStatus 추가
+
+  // ----------------------------------------------------------------
+  // UI 렌더링
+  // ----------------------------------------------------------------
+  
+  // ★ 경기가 끝났는지 체크
+  const isBettingAllowed = currentStatus !== 'FINISHED';
 
   const handleBet = (type: 'home' | 'draw' | 'away', teamName: string) => {
+    if (!isBettingAllowed) {
+      alert("경기가 종료되었습니다.");
+      return;
+    }
+    
     addBet({
       id: `${match.id}-${type}`,
       matchId: match.id,
       teamName,
       selectedType: type,
-      odds: liveOdds[type], // 화면에 보이는 최신 배당으로 베팅
-      status: match.status
+      odds: liveOdds[type], 
+      status: currentStatus as any // ★ 현재 상태로 저장
     });
   };
 
@@ -173,6 +183,7 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
     ${isSelected(type) 
       ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.5)]' 
       : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-600'}
+    ${!isBettingAllowed ? 'opacity-50 cursor-not-allowed grayscale' : ''} // ★ 종료 시 스타일 처리
   `;
 
   return (
@@ -185,13 +196,13 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
         {/* 상단: 리그 정보 & 시간 */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-2">
-            {match.status === 'LIVE' ? (
+            {currentStatus === 'LIVE' ? ( // ★ currentStatus 사용
                <>
                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
                  <span className="text-red-500 font-bold tracking-wider text-sm">LIVE MATCH</span>
                </>
             ) : (
-               <span className="text-slate-400 font-bold tracking-wider text-sm">{match.status}</span>
+               <span className="text-slate-400 font-bold tracking-wider text-sm">{currentStatus}</span>
             )}
           </div>
           <div className="bg-slate-950/50 px-3 py-1 rounded-full border border-slate-700/50 text-emerald-400 font-mono text-sm">
@@ -201,7 +212,6 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
 
         {/* 메인: 스코어 보드 */}
         <div className="flex justify-between items-center mb-8">
-          {/* 홈팀 */}
           <div className="flex flex-col items-center gap-3 flex-1">
              <div className="w-20 h-20 relative p-2 bg-white/5 rounded-full backdrop-blur-sm border border-white/10">
               <img src={match.homeLogo || getTeamBadge(match.homeTeam)} alt={match.homeTeam} className="w-full h-full object-contain p-2" />
@@ -209,7 +219,6 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             <span className="font-bold text-lg text-white text-center leading-tight">{match.homeTeam}</span>
           </div>
 
-          {/* 중앙 점수 */}
           <div className="px-6 text-center relative">
             <div className="text-5xl font-black text-white font-mono tracking-widest drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
               {liveScore.home} : {liveScore.away}
@@ -217,7 +226,6 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
             <div className="text-slate-500 text-xs mt-2 uppercase tracking-widest">Current Score</div>
           </div>
 
-          {/* 원정팀 */}
           <div className="flex flex-col items-center gap-3 flex-1">
             <div className="w-20 h-20 relative p-2 bg-white/5 rounded-full backdrop-blur-sm border border-white/10">
               <img src={match.awayLogo || getTeamBadge(match.awayTeam)} alt={match.awayTeam} className="w-full h-full object-contain p-2" />
@@ -228,21 +236,33 @@ export default function LiveMatchCard({ match }: { match: MatchProps }) {
 
         {/* 하단: 배당 버튼 */}
         <div className="flex gap-3">
-          <button onClick={() => handleBet('home', match.homeTeam)} className={getBtnClass('home')}>
+          <button 
+            onClick={() => handleBet('home', match.homeTeam)} 
+            disabled={!isBettingAllowed} // ★ 종료 시 비활성화
+            className={getBtnClass('home')}
+          >
             <div className="text-xs opacity-70 mb-1">HOME</div>
             <div className={`text-xl font-bold font-mono ${trend === 'up' ? 'text-red-400' : trend === 'down' ? 'text-blue-400' : 'text-white'}`}>
               {liveOdds.home.toFixed(2)}
             </div>
           </button>
 
-          <button onClick={() => handleBet('draw', 'Draw')} className={getBtnClass('draw')}>
+          <button 
+            onClick={() => handleBet('draw', 'Draw')} 
+            disabled={!isBettingAllowed}
+            className={getBtnClass('draw')}
+          >
             <div className="text-xs opacity-70 mb-1">DRAW</div>
             <div className="text-xl font-bold font-mono text-white">
               {liveOdds.draw.toFixed(2)}
             </div>
           </button>
 
-          <button onClick={() => handleBet('away', match.awayTeam)} className={getBtnClass('away')}>
+          <button 
+            onClick={() => handleBet('away', match.awayTeam)} 
+            disabled={!isBettingAllowed}
+            className={getBtnClass('away')}
+          >
             <div className="text-xs opacity-70 mb-1">AWAY</div>
             <div className="text-xl font-bold font-mono text-white">
               {liveOdds.away.toFixed(2)}
