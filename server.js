@@ -1061,6 +1061,23 @@ app.post('/api/admin/approve-exchange', async (req, res) => {
     }
 });
 
+// [유지보수용] DB 강제 초기화 (데이터 꼬였을 때 사용)
+app.get('/api/admin/force-refresh', async (req, res) => {
+    try {
+        console.log("⚠️ [Admin] DB 강제 초기화 요청됨...");
+        
+        // 1. 기존 데이터 삭제
+        await Match.deleteMany({}); 
+        
+        // 2. 다시 가져오기
+        await fetchTeamFormAndPredict(); // 전력 분석
+        await fetchFixtures(); // 경기 데이터 동기화
+        
+        res.json({ success: true, message: "DB 재설정 및 업데이트 완료" });
+    } catch (e) { 
+        res.status(500).json({ success: false, message: e.message }); 
+    }
+});
 
 
 
