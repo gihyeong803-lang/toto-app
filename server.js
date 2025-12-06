@@ -642,6 +642,8 @@ app.post('/api/bet', async (req, res) => {
 
         if (!matchInfo) {
             return res.json({ success: false, message: '경기 정보를 찾을 수 없습니다.' });
+            const LIVE_STATUSES = ['LIVE', 'IN_PLAY', 'PAUSED'];
+            const isLive = LIVE_STATUSES.includes(matchInfo.status);
         }
 
         // 디버깅 정보를 담을 변수
@@ -650,7 +652,7 @@ app.post('/api/bet', async (req, res) => {
         // ==================================================================
         // ★ [15분 차단 로직] 계산 결과를 프론트엔드로 전송
         // ==================================================================
-        if (matchInfo.status !== 'LIVE') {
+        if (!isLive) {
             const now = new Date();
             const utcNow = now.getTime(); 
             const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 한국 시간
@@ -1059,112 +1061,9 @@ app.post('/api/admin/approve-exchange', async (req, res) => {
     }
 });
 
-// server.js 맨 아래쪽, app.listen 위에 추가하세요.
 
-// [긴급 진단 1] DB 초기화 및 강제 동기화 (옛날 데이터 삭제용)
-app.get('/api/admin/force-refresh', async (req, res) => {
-    try {
-        console.log("⚠️ [Admin] 매치 데이터 전체 삭제 및 재동기화 시도...");
-        // 1. 기존 매치 데이터 싹 지우기 (잘못된 시간 포맷 삭제)
-        await Match.deleteMany({}); 
-        console.log("✅ 기존 데이터 삭제 완료.");
 
-        // 2. 다시 받아오기
-        await fetchTeamFormAndPredict();
-        await fetchFixtures();
-        
-        console.log("✅ 데이터 재동기화 완료.");
-        res.json({ success: true, message: "DB가 깨끗하게 초기화되고 최신 데이터로 업데이트되었습니다." });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ success: false, message: e.message });
-    }
-});
 
-// [긴급 진단 2] 시간 설정 확인용 (서버가 몇 시로 알고 있는지 눈으로 확인)
-// server.js 의 app.get('/api/debug/time', ...) 전체를 교체
-
-// server.js의 app.get('/api/debug/time', ...) 전체를 이걸로 덮어씌우세요.
-
-app.get('/api/debug/time', async (req, res) => {
-    try {
-        const now = new Date();
-        const utcNow = now.getTime();
-        const kstNowVal = utcNow + (9 * 60 * 60 * 1000); 
-        const kstDate = new Date(kstNowVal);
-
-        // 1. 조건 없이 전체 개수 세기
-        const totalCount = await Match.countDocuments({});
-
-        // 2. 조건 없이 아무 경기나 1개 가져오기
-        const anyMatch = await Match.findOne({}); 
-
-        res.json({
-            현재_서버_시간_KST: kstDate.toUTCString().replace('GMT', '(KST)'),
-            DB_데이터_총_개수: totalCount,
-            샘플_경기_정보: anyMatch ? {
-                홈팀: anyMatch.home,
-                어웨이팀: anyMatch.away,
-                저장된_시간_문자열: anyMatch.matchTime, 
-                // ★ [수정됨] 괄호가 들어간 키 이름에 따옴표("")를 붙여서 오류 해결
-                "상태(Status)": anyMatch.status, 
-                ID: anyMatch.id
-            } : "❌ DB가 텅 비어있습니다. (API 호출 실패 또는 키 만료)"
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// [테스트용] 특정 경기를 강제로 'LIVE' 상태로 변경 (베팅 테스트용)
-// server.js 의 /api/admin/force-live 라우트 전체 교체
-
-app.get('/api/admin/force-live', async (req, res) => {
-    try {
-        // 1. 아무 경기나 하나 찾음 (선덜랜드 경기 우선)
-        const targetMatch = await Match.findOne({ id: 537905 }); 
-        const match = targetMatch || await Match.findOne({});
-
-        if (!match) {
-            return res.json({ success: false, message: "경기가 하나도 없습니다." });
-        }
-
-        // 2. [핵심] 날짜를 '오늘 현재 시간'으로 강제 변경 (그래야 필터링에 걸림)
-        const now = new Date();
-        const utcNow = now.getTime();
-        const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 한국 시간
-        const kstDate = new Date(kstNowVal);
-
-        const month = (kstDate.getUTCMonth() + 1).toString().padStart(2, '0');
-        const day = kstDate.getUTCDate().toString().padStart(2, '0');
-        const hour = kstDate.getUTCHours().toString().padStart(2, '0');
-        const minute = kstDate.getUTCMinutes().toString().padStart(2, '0');
-        const year = kstDate.getUTCFullYear();
-
-        // 3. 데이터 업데이트
-        match.status = 'LIVE'; 
-        match.score = { home: 1, away: 2 }; // 스코어도 1:2로 변경해봄
-        
-        // 날짜를 오늘로 바꿈
-        match.matchTime = `${month}. ${day}. ${hour}:${minute}`; 
-        match.date = `${year}. ${month}. ${day}.`;
-        match.time = `${hour}:${minute}`;
-        
-        match.isSettled = false;
-        
-        await match.save();
-
-        console.log(`⚡ [Admin] 강제 라이브(오늘 날짜) 전환 완료: ${match.home} vs ${match.away}`);
-        
-        res.json({ 
-            success: true, 
-            message: `[${match.home} vs ${match.away}] 경기가 오늘(${match.matchTime}) LIVE 상태로 변경되었습니다.`,
-            matchData: match
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
 // ==========================================================
 
 // [필수] 서버 시작 (시뮬레이션 엔진 가동)
