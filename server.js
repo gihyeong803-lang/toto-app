@@ -640,18 +640,22 @@ app.post('/api/bet', async (req, res) => {
         const matchIdToCheck = ticket.matchId || (ticket.items && ticket.items[0].matchId);
         const matchInfo = await Match.findOne({ id: matchIdToCheck });
 
+        // 1. 경기 정보가 없을 때 튕겨내는 로직
         if (!matchInfo) {
             return res.json({ success: false, message: '경기 정보를 찾을 수 없습니다.' });
-            const LIVE_STATUSES = ['LIVE', 'IN_PLAY', 'PAUSED'];
-            const isLive = LIVE_STATUSES.includes(matchInfo.status);
         }
+
+        // ==================================================================
+        // ★ [수정됨] isLive 변수 선언을 여기로 꺼냈습니다! (위치 변경)
+        // ==================================================================
+        const LIVE_STATUSES = ['LIVE', 'IN_PLAY', 'PAUSED'];
+        const isLive = LIVE_STATUSES.includes(matchInfo.status); 
+        // ==================================================================
 
         // 디버깅 정보를 담을 변수
         let debugInfo = {};
 
-        // ==================================================================
-        // ★ [15분 차단 로직] 계산 결과를 프론트엔드로 전송
-        // ==================================================================
+        // 라이브가 아닐 때만(!isLive) 시간 체크 수행
         if (!isLive) {
             const now = new Date();
             const utcNow = now.getTime(); 
@@ -661,9 +665,9 @@ app.post('/api/bet', async (req, res) => {
             let matchTimeVal = 0;
             
             if (parts && parts.length >= 4) {
-                if (parts[0].length === 4) { // 2025...
+                if (parts[0].length === 4) { 
                     matchTimeVal = Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]));
-                } else { // 12...
+                } else { 
                     const currentYear = new Date().getFullYear();
                     matchTimeVal = Date.UTC(currentYear, parseInt(parts[0]) - 1, parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]));
                 }
@@ -672,12 +676,8 @@ app.post('/api/bet', async (req, res) => {
             const diffMs = matchTimeVal - kstNowVal;
             const minutesRemaining = Math.floor(diffMs / (1000 * 60));
 
-            // ★ [핵심] 이 정보를 브라우저로 보냅니다
             debugInfo = {
                 경기이름: `${matchInfo.home} vs ${matchInfo.away}`,
-                경기시간_문자열: matchInfo.matchTime,
-                경기시간_타임스탬프: matchTimeVal,
-                현재서버시간_KST: kstNowVal,
                 남은시간_분: minutesRemaining,
                 차단기준: "15분 이하"
             };
@@ -686,15 +686,14 @@ app.post('/api/bet', async (req, res) => {
                 return res.json({ 
                     success: false, 
                     message: `경기 시작 ${minutesRemaining}분 전입니다. 베팅이 마감되었습니다.`,
-                    debug: debugInfo // ★ 에러 나도 디버그 정보 보여줌
+                    debug: debugInfo
                 });
             }
         }
-        // ==================================================================
 
         const matchName = matchInfo ? `${matchInfo.home} vs ${matchInfo.away}` : 'Unknown';
 
-        // 중복 배팅 체크 (단폴더 기준)
+        // 중복 배팅 체크
         if (await Bet.findOne({ userId: userid, matchId: matchIdToCheck })) {
             return res.json({ success: false, message: '이미 배팅한 경기입니다.' });
         }
@@ -719,7 +718,6 @@ app.post('/api/bet', async (req, res) => {
         res.status(500).json({ success: false, message: e.message }); 
     }
 });
-
 // [보안 패치] 배팅 내역 조회 (아이디 없으면 빈 목록 반환)
 app.get('/api/my-bets', async (req, res) => {
     const requestUserId = req.query.userid || req.query.userId;
