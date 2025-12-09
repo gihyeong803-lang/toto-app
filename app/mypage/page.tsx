@@ -8,6 +8,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+// ★ [수정 1] 중앙 관리되는 로고 함수 가져오기
+import { getTeamBadge } from '@/utils/footballApi';
+
 interface MatchDetails {
   home: string;
   away: string;
@@ -41,50 +44,8 @@ interface Match {
   status: string; 
 }
 
-// [수정됨] 로고 매핑 함수 (웨스트햄/맨유 충돌 해결)
-const getTeamLogo = (teamName: string) => {
-  const name = teamName?.toLowerCase() || '';
-  
-  // 1. [순서 중요] 'United'가 들어가는 다른 팀들을 먼저 검사해야 함!
-  if (name.includes('west ham')) return 'https://resources.premierleague.com/premierleague/badges/50/t21.png';
-  if (name.includes('newcastle')) return 'https://resources.premierleague.com/premierleague/badges/50/t4.png';
-  if (name.includes('sheffield')) return 'https://resources.premierleague.com/premierleague/badges/50/t49.png';
-  if (name.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
+// ❌ [삭제] 파일 내부에 있던 옛날 getTeamLogo 함수는 이제 지웁니다.
 
-  // 2. 그 다음 맨유 검사 (이제 안전함)
-  if (name.includes('united') || name.includes('man utd')) return 'https://resources.premierleague.com/premierleague/badges/50/t1.png';
-
-  // 3. 나머지 팀들 (ESPN 고화질 + 위키피디아)
-  if (name.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
-  if (name.includes('aston villa')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/362.png';
-  if (name.includes('bournemouth')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/349.png';
-  if (name.includes('brentford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/337.png';
-  if (name.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
-  if (name.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
-  if (name.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
-  if (name.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
-  if (name.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
-  if (name.includes('west brom')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/383.png';
-  if (name.includes('stoke')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/336.png';
-  if (name.includes('hull')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/306.png';
-  if (name.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
-  if (name.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
-
-  if (name.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
-  if (name.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
-  if (name.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
-  if (name.includes('crystal palace')) return 'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg';
-  if (name.includes('everton')) return 'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg';
-  if (name.includes('fulham')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg';
-  if (name.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
-  if (name.includes('luton')) return 'https://upload.wikimedia.org/wikipedia/en/9/9d/Luton_Town_logo.svg';
-  if (name.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg'; 
-  if (name.includes('nottingham')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
-  if (name.includes('tottenham')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
-  if (name.includes('wolves') || name.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
-
-  return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
-};
 export default function MyPage() {
   const { user, login } = useAuthStore();
   const router = useRouter();
@@ -111,6 +72,7 @@ export default function MyPage() {
           return;
         }
 
+        // 내 Render 서버 주소
         const API_BASE = 'https://toto-server-f4j2.onrender.com'; 
 
         const userRes = await fetch(`${API_BASE}/api/user/refresh`, {
@@ -246,7 +208,6 @@ export default function MyPage() {
               return (
                 <div key={bet._id} className="bg-[#1e2130] rounded-xl p-5 border border-slate-700/50 shadow-lg relative overflow-hidden">
                   
-                  {/* [수정 2] 모바일에서 버튼이 날짜를 가리지 않도록 레이아웃 변경 */}
                   <div className="flex justify-between items-center mb-4 gap-2 flex-wrap">
                       <div className="text-xs text-slate-500 whitespace-nowrap">{new Date(bet.betTime).toLocaleString()}</div>
                       
@@ -274,12 +235,14 @@ export default function MyPage() {
                             return (
                                 <div key={idx} className="flex items-center justify-between bg-[#161925] p-3 rounded-lg border border-slate-700">
                                     <div className="flex items-center gap-1 md:gap-2 flex-1 justify-end min-w-0">
-                                        <div className="relative w-5 h-5 flex-shrink-0"><Image src={getTeamLogo(homeName)} alt={homeName} fill className="object-contain" sizes="20px" /></div>
+                                        {/* [수정 2] getTeamLogo -> getTeamBadge 교체 */}
+                                        <div className="relative w-5 h-5 flex-shrink-0"><Image src={getTeamBadge(homeName)} alt={homeName} fill className="object-contain" sizes="20px" /></div>
                                         <span className="text-[10px] md:text-xs text-white font-bold truncate">{homeName}</span>
                                     </div>
                                     <div className="text-[10px] text-slate-600 font-bold mx-1">VS</div>
                                     <div className="flex items-center gap-1 md:gap-2 flex-1 justify-start min-w-0">
-                                        <div className="relative w-5 h-5 flex-shrink-0"><Image src={getTeamLogo(awayName)} alt={awayName} fill className="object-contain" sizes="20px" /></div>
+                                        {/* [수정 3] getTeamLogo -> getTeamBadge 교체 */}
+                                        <div className="relative w-5 h-5 flex-shrink-0"><Image src={getTeamBadge(awayName)} alt={awayName} fill className="object-contain" sizes="20px" /></div>
                                         <span className="text-[10px] md:text-xs text-white font-bold truncate">{awayName}</span>
                                     </div>
                                     
@@ -298,7 +261,8 @@ export default function MyPage() {
                       match ? (
                         <div className="flex items-center justify-between text-white font-bold text-lg bg-[#161925] p-3 rounded-lg border border-slate-700">
                           <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-                            <div className="relative w-6 h-6 flex-shrink-0"><Image src={getTeamLogo(match.home)} alt={match.home} fill className="object-contain" sizes="30px" /></div>
+                            {/* [수정 4] getTeamLogo -> getTeamBadge 교체 */}
+                            <div className="relative w-6 h-6 flex-shrink-0"><Image src={getTeamBadge(match.home)} alt={match.home} fill className="object-contain" sizes="30px" /></div>
                             <span className="text-right truncate text-xs md:text-base">{match.home}</span>
                           </div>
                           <div className="flex flex-col items-center w-auto min-w-[50px] px-1">
@@ -309,7 +273,8 @@ export default function MyPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-1 justify-start min-w-0">
-                            <div className="relative w-6 h-6 flex-shrink-0"><Image src={getTeamLogo(match.away)} alt={match.away} fill className="object-contain" sizes="30px" /></div>
+                            {/* [수정 5] getTeamLogo -> getTeamBadge 교체 */}
+                            <div className="relative w-6 h-6 flex-shrink-0"><Image src={getTeamBadge(match.away)} alt={match.away} fill className="object-contain" sizes="30px" /></div>
                             <span className="text-left truncate text-xs md:text-base">{match.away}</span>
                           </div>
                         </div>

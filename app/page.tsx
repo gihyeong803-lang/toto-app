@@ -1,46 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import MatchCard from '@/components/MatchCard';
-import { getRealMatches } from '@/utils/footballApi';
+// ★ [수정] getTeamBadge를 여기서 불러옵니다 (중복 제거 & 로고 통일)
+import { getRealMatches, getTeamBadge } from '@/utils/footballApi';
 import { allMatches as mockData } from '@/utils/mockMatches';
-// MobileHeaderProfile import 제거 (레이아웃으로 이동했으므로)
 
 export const dynamic = 'force-dynamic';
 
-const getTeamLogo = (teamName: string) => {
-  const name = teamName?.toLowerCase() || '';
-  const baseUrl = 'https://resources.premierleague.com/premierleague/badges';
-
-  if (name.includes('arsenal')) return `${baseUrl}/t3.svg`;
-  if (name.includes('aston villa') || name.includes('villa')) return `${baseUrl}/t7.svg`;
-  if (name.includes('bournemouth')) return `${baseUrl}/t91.svg`;
-  if (name.includes('brentford')) return `${baseUrl}/t94.svg`;
-  if (name.includes('brighton')) return `${baseUrl}/t36.svg`;
-  if (name.includes('burnley')) return `${baseUrl}/t90.svg`;
-  if (name.includes('chelsea')) return `${baseUrl}/t8.svg`;
-  if (name.includes('crystal palace') || name.includes('palace')) return `${baseUrl}/t31.svg`;
-  if (name.includes('everton')) return `${baseUrl}/t11.svg`;
-  if (name.includes('fulham')) return `${baseUrl}/t54.svg`;
-  if (name.includes('liverpool')) return `${baseUrl}/t14.svg`;
-  if (name.includes('luton')) return `${baseUrl}/t102.svg`;
-  if (name.includes('man city') || name.includes('manchester city')) return `${baseUrl}/t43.svg`;
-  if (name.includes('man utd') || name.includes('manchester united')) return `${baseUrl}/t1.svg`;
-  if (name.includes('newcastle')) return `${baseUrl}/t4.svg`;
-  if (name.includes('nottingham') || name.includes('forest')) return `${baseUrl}/t17.svg`;
-  if (name.includes('sheffield')) return `${baseUrl}/t49.svg`;
-  if (name.includes('tottenham') || name.includes('spurs')) return `${baseUrl}/t6.svg`;
-  if (name.includes('west ham')) return `${baseUrl}/t21.svg`;
-  if (name.includes('wolves') || name.includes('wolverhampton')) return `${baseUrl}/t39.svg`;
-  if (name.includes('leeds')) return `${baseUrl}/t2.svg`;
-  if (name.includes('leicester')) return `${baseUrl}/t13.svg`;
-  if (name.includes('southampton')) return `${baseUrl}/t20.svg`;
-  if (name.includes('ipswich')) return `${baseUrl}/t40.svg`;
-  if (name.includes('sunderland')) return `${baseUrl}/t56.svg`;
-  if (name.includes('watford')) return `${baseUrl}/t57.svg`;
-  if (name.includes('norwich')) return `${baseUrl}/t45.svg`;
-  
-  return `https://assets.codepen.io/t-1/premier-league-logo.png`;
-};
+// ❌ [삭제] 파일 안에 있던 옛날 getTeamLogo 함수는 이제 필요 없습니다.
 
 interface HomeProps {
   searchParams: Promise<{ team?: string }>;
@@ -73,12 +40,14 @@ export default async function Home(props: HomeProps) {
     });
   }
 
+  // 종료된 경기 필터링
   matches = matches.filter(match => {
     const status = match.status || 'UPCOMING';
     return status !== 'FINISHED' && status !== 'FT' && status !== 'AWARDED';
   });
 
-  const headerLogo = selectedTeam ? getTeamLogo(selectedTeam) : "/pl-logo.avif";
+  // ★ [수정] 헤더 로고도 footballApi의 함수 사용
+  const headerLogo = selectedTeam ? getTeamBadge(selectedTeam) : "/pl-logo.avif";
 
   return (
     <div className="max-w-4xl mx-auto w-full pb-20 md:pb-0">
@@ -91,6 +60,7 @@ export default async function Home(props: HomeProps) {
                alt={selectedTeam}
                fill
                className="object-contain"
+               unoptimized // 외부 URL 사용 시 권장
              />
            </div>
            <h1 className="text-5xl md:text-6xl font-black text-white uppercase tracking-tighter text-center drop-shadow-2xl">
@@ -98,7 +68,6 @@ export default async function Home(props: HomeProps) {
            </h1>
         </header>
       ) : (
-        // ★ [수정됨] 버튼 제거하고 원래대로 왼쪽 정렬
         <header className="mb-8 mt-6 flex items-center gap-4">
           <div className="relative w-12 h-12 shadow-lg rounded-full overflow-hidden border-2 border-slate-700 bg-[#1a1d26]">
             <Image src="/pl-logo.avif" alt="Logo" fill className="object-cover" />
@@ -127,8 +96,9 @@ export default async function Home(props: HomeProps) {
               id: match.id,
               homeTeam: homeName,
               awayTeam: awayName,
-              homeLogo: match.homeLogo || getTeamLogo(homeName),
-              awayLogo: match.awayLogo || getTeamLogo(awayName),
+              // ★ [수정] 여기서도 getTeamBadge 사용 (웨스트햄 로고 해결됨)
+              homeLogo: match.homeLogo || getTeamBadge(homeName),
+              awayLogo: match.awayLogo || getTeamBadge(awayName),
               matchTime: match.matchTime || match.time || "00:00",
               status: match.status || 'UPCOMING',
               score: match.score || { home: 0, away: 0 },

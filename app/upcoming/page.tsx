@@ -1,55 +1,10 @@
 import Image from 'next/image';
 import MatchCard from '@/components/MatchCard';
-import { getRealMatches } from '@/utils/footballApi';
 import { MatchData } from '@/utils/mockMatches';
+import { getRealMatches, getTeamBadge } from '@/utils/footballApi';
 
 export const dynamic = 'force-dynamic';
 
-// [수정됨] 로고 매핑 함수 (LiveMatchCard와 로직 통일하여 안정성 확보)
-const getTeamBadge = (teamName: string) => {
-  const name = teamName?.toLowerCase() || '';
-  // 프리미어리그 공식 로고 베이스 URL
-  const plBaseUrl = 'https://resources.premierleague.com/premierleague/badges';
-
-  // 1. 프리미어리그 팀 (공식 리소스 사용 - 가장 정확함)
-  if (name.includes('arsenal')) return `${plBaseUrl}/t3.svg`;
-  if (name.includes('villa')) return `${plBaseUrl}/t7.svg`; // ★ 아스톤 빌라 (Aston Villa) 해결
-  if (name.includes('bournemouth')) return `${plBaseUrl}/t91.svg`;
-  if (name.includes('brentford')) return `${plBaseUrl}/t94.svg`;
-  if (name.includes('brighton')) return `${plBaseUrl}/t36.svg`;
-  if (name.includes('burnley')) return `${plBaseUrl}/t90.svg`;
-  if (name.includes('chelsea')) return `${plBaseUrl}/t8.svg`;
-  if (name.includes('palace')) return `${plBaseUrl}/t31.svg`;
-  if (name.includes('everton')) return `${plBaseUrl}/t11.svg`;
-  if (name.includes('fulham')) return `${plBaseUrl}/t54.svg`;
-  if (name.includes('ipswich')) return `${plBaseUrl}/t40.svg`;
-  if (name.includes('leicester')) return `${plBaseUrl}/t13.svg`;
-  if (name.includes('liverpool')) return `${plBaseUrl}/t14.svg`;
-  if (name.includes('luton')) return `${plBaseUrl}/t102.svg`;
-  if (name.includes('city')) return `${plBaseUrl}/t43.svg`; // Man City
-  if (name.includes('man utd') || name.includes('united')) return `${plBaseUrl}/t1.svg`; // Man Utd
-  if (name.includes('newcastle')) return `${plBaseUrl}/t4.svg`;
-  if (name.includes('forest') || name.includes('nottingham')) return `${plBaseUrl}/t17.svg`;
-  if (name.includes('southampton')) return `${plBaseUrl}/t20.svg`;
-  if (name.includes('sheffield')) return `${plBaseUrl}/t49.svg`;
-  if (name.includes('tottenham') || name.includes('spurs')) return `${plBaseUrl}/t6.svg`;
-  if (name.includes('west ham')) return `${plBaseUrl}/t21.svg`;
-  if (name.includes('wolves') || name.includes('wolverhampton')) return `${plBaseUrl}/t39.svg`;
-
-  // 2. 챔피언십 및 기타 팀 (ESPN 고화질 로고 사용 - 백업용)
-  if (name.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
-  if (name.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
-  if (name.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
-  if (name.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
-  if (name.includes('west brom')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/383.png';
-  if (name.includes('stoke')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/336.png';
-  if (name.includes('hull')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/306.png';
-  if (name.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
-  if (name.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
-
-  // 기본 이미지
-  return 'https://assets.codepen.io/t-1/premier-league-logo.png';
-};
 
 export default async function UpcomingPage() {
   const allMatches = await getRealMatches();

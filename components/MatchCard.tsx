@@ -1,260 +1,124 @@
-'use client';
+import Image from 'next/image';
+import Link from 'next/link';
+import MatchCard from '@/components/MatchCard';
+// ★ [수정] getTeamBadge를 여기서 불러옵니다 (중복 제거 & 로고 통일)
+import { getRealMatches, getTeamBadge } from '@/utils/footballApi';
+import { allMatches as mockData } from '@/utils/mockMatches';
 
-import { useState, useEffect } from 'react';
-import { useBetStore } from '../store/useBetStore';
+export const dynamic = 'force-dynamic';
 
-// 내 Render 서버 주소
-const API_BASE_URL = 'https://toto-server-f4j2.onrender.com'; 
+// ❌ [삭제] 파일 안에 있던 옛날 getTeamLogo 함수는 이제 필요 없습니다.
 
-interface MatchProps {
-  id: number;
-  homeTeam: string;
-  awayTeam: string;
-  homeLogo?: string;
-  awayLogo?: string;
-  matchTime: string; // "12. 01. 23:05" (한국 시간 문자열)
-  status: 'LIVE' | 'UPCOMING' | 'FINISHED';
-  odds: { home: number; draw: number; away: number };
-  score?: { home: number; away: number };
+interface HomeProps {
+  searchParams: Promise<{ team?: string }>;
 }
 
-export default function MatchCard({ match }: { match: MatchProps }) {
-  const { addBet, bets } = useBetStore();
-  
-  // 상태 관리
-  const [liveOdds, setLiveOdds] = useState(match.odds);
-  const [liveScore, setLiveScore] = useState(match.score || { home: 0, away: 0 });
-  const [currentStatus, setCurrentStatus] = useState(match.status);
-  
-  // ★ [추가됨] 베팅 잠금 상태 관리 (이게 있어야 막힙니다!)
-  const [isLocked, setIsLocked] = useState(false);
-  const [lockReason, setLockReason] = useState('');
+export default async function Home(props: HomeProps) {
+  let matches: any[] = [];
+  const searchParams = await props.searchParams;
+  const selectedTeam = searchParams?.team;
 
-  // 로고 매핑 함수 (최신 버전 유지)
-  const getTeamBadge = (name: string) => {
-    const lowerName = name?.toLowerCase() || '';
+  try {
+    matches = await getRealMatches();
+  } catch (err) {
+    console.error("API Error:", err);
+  }
 
-    if (lowerName.includes('newcastle')) return 'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg';
-    if (lowerName.includes('west ham')) return 'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg';
-    if (lowerName.includes('sheffield')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/398.png';
-    if (lowerName.includes('leeds')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/357.png';
-    
-    if (lowerName.includes('man city') || lowerName.includes('city')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg';
-    if (lowerName.includes('man utd') || lowerName.includes('manchester united')) return 'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg';
+  if (!matches || matches.length === 0) {
+    matches = mockData;
+  }
 
-    if (lowerName.includes('arsenal')) return 'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg';
-    if (lowerName.includes('aston') || lowerName.includes('villa')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/362.png';
-    if (lowerName.includes('bournemouth')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/AFC_Bournemouth_%282013%29.svg';
-    if (lowerName.includes('brentford')) return 'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg';
-    if (lowerName.includes('brighton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg';
-    if (lowerName.includes('chelsea')) return 'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg';
-    if (lowerName.includes('palace')) return 'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg';
-    if (lowerName.includes('everton')) return 'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg';
-    if (lowerName.includes('fulham')) return 'https://upload.wikimedia.org/wikipedia/en/e/eb/Fulham_FC_%28shield%29.svg';
-    if (lowerName.includes('ipswich')) return 'https://upload.wikimedia.org/wikipedia/en/8/82/Ipswich_Town_FC_logo.svg';
-    if (lowerName.includes('leicester')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/375.png';
-    if (lowerName.includes('liverpool')) return 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg';
-    if (lowerName.includes('luton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/301.png';
-    if (lowerName.includes('forest') || lowerName.includes('nottingham')) return 'https://upload.wikimedia.org/wikipedia/en/e/e5/Nottingham_Forest_F.C._logo.svg';
-    if (lowerName.includes('southampton')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/376.png';
-    if (lowerName.includes('tottenham') || lowerName.includes('spurs')) return 'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg';
-    if (lowerName.includes('wolves') || lowerName.includes('wolverhampton')) return 'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg';
-    
-    if (lowerName.includes('sunderland')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/366.png';
-    if (lowerName.includes('watford')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/395.png';
-    if (lowerName.includes('norwich')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/381.png';
-    if (lowerName.includes('west brom')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/383.png';
-    if (lowerName.includes('stoke')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/336.png';
-    if (lowerName.includes('hull')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/306.png';
-    if (lowerName.includes('middlesbrough')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/369.png';
-    if (lowerName.includes('blackburn')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/365.png';
-    if (lowerName.includes('burnley')) return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/379.png';
-
-    return 'https://upload.wikimedia.org/wikipedia/en/f/f2/Premier_League_Logo.svg';
-  };
-
-  useEffect(() => {
-    // ----------------------------------------------------------------
-    // ★ [추가됨] 15분 전 / 라이브 상태 체크 -> 버튼 잠금 로직
-    // ----------------------------------------------------------------
-    const checkTimeAndStatus = () => {
-      // 1. 경기 종료 -> 잠금
-      if (currentStatus === 'FINISHED') {
-        setIsLocked(true);
-        setLockReason('경기 종료');
-        return;
-      }
-
-      // 2. 이미 라이브 중 -> 일반 탭에서는 베팅 불가 -> 잠금
-      if (currentStatus === 'LIVE') {
-        setIsLocked(true);
-        setLockReason('라이브 중 (이동)');
-        return;
-      }
-
-      // 3. 시간 계산 ("12. 01. 23:05" 파싱)
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const parts = match.matchTime.match(/\d+/g);
-      
-      if (parts && parts.length >= 4) {
-        // 한국 시간 기준 Date 객체 생성
-        const matchDate = new Date(
-          currentYear, 
-          parseInt(parts[0]) - 1, 
-          parseInt(parts[1]), 
-          parseInt(parts[2]), 
-          parseInt(parts[3])
-        );
-
-        const diffMs = matchDate.getTime() - now.getTime();
-        const minutesRemaining = Math.floor(diffMs / (1000 * 60));
-
-        // ★ 15분 이하로 남았으면 잠금
-        if (minutesRemaining <= 15) {
-          setIsLocked(true);
-          setLockReason('베팅 마감');
-        } else {
-          setIsLocked(false);
-          setLockReason('');
-        }
-      }
-    };
-
-    // ----------------------------------------------------------------
-    // 서버 데이터 폴링
-    // ----------------------------------------------------------------
-    const fetchLatestData = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/matches?t=${Date.now()}`);
-        if (!res.ok) return;
-
-        const allMatches = await res.json();
-        const myMatch = allMatches.find((m: any) => m.id === match.id);
-
-        if (myMatch) {
-          setLiveOdds(myMatch.odds);
-          setLiveScore({
-            home: myMatch.score?.home ?? 0,
-            away: myMatch.score?.away ?? 0
-          });
-          
-          let displayStatus = myMatch.status;
-          if (['SCHEDULED', 'TIMED'].includes(myMatch.status)) displayStatus = 'UPCOMING';
-          if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(myMatch.status)) displayStatus = 'LIVE';
-          
-          setCurrentStatus(displayStatus);
-        }
-      } catch (err) {
-        console.error("동기화 실패");
-      }
-    };
-
-    // 초기 체크
-    checkTimeAndStatus();
-
-    // 주기적 실행 (5초마다)
-    const interval = setInterval(() => {
-      fetchLatestData();
-      checkTimeAndStatus(); // ★ 시간 체크도 계속 수행해야 함
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [match.id, match.matchTime, currentStatus]);
-
-
-  // ----------------------------------------------------------------
-  // UI 렌더링
-  // ----------------------------------------------------------------
-  const handleBet = (selection: 'home' | 'draw' | 'away', odds: number, label: string) => {
-    // ★ 잠금 상태면 클릭 차단
-    if (isLocked) {
-      alert(`[${lockReason}] 현재 베팅할 수 없습니다. 라이브 베팅을 이용해주세요.`);
-      return;
-    }
-    addBet({
-      id: `${match.id}-${selection}`,
-      matchId: match.id,
-      teamName: label,
-      selectedType: selection,
-      odds: odds,
-      status: currentStatus as any
+  if (selectedTeam) {
+    const target = selectedTeam.toLowerCase();
+    matches = matches.filter(match => {
+      const home = (match.homeTeam || match.home || "").toLowerCase();
+      const away = (match.awayTeam || match.away || "").toLowerCase();
+      if (target === 'man utd') return home.includes('united') || home.includes('utd') || away.includes('united') || away.includes('utd');
+      if (target === 'man city') return home.includes('city') || away.includes('city');
+      if (target === 'tottenham') return home.includes('tottenham') || home.includes('spurs') || away.includes('tottenham') || away.includes('spurs');
+      return home.includes(target) || away.includes(target);
     });
-  };
+  }
 
-  const isSelected = (selection: string) => bets.some(b => b.id === `${match.id}-${selection}`);
+  // 종료된 경기 필터링
+  matches = matches.filter(match => {
+    const status = match.status || 'UPCOMING';
+    return status !== 'FINISHED' && status !== 'FT' && status !== 'AWARDED';
+  });
 
-  // 버튼 컴포넌트
-  const BettingButton = ({ selection, odds, label }: any) => (
-    <button 
-      onClick={() => handleBet(selection, odds, label)}
-      disabled={isLocked} // ★ HTML 버튼 자체를 비활성화
-      className={`flex-1 flex flex-col items-center justify-center py-4 rounded-lg border transition-all active:scale-95
-        ${isSelected(selection) 
-          ? 'bg-emerald-600 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4)]' 
-          : 'bg-[#23263a] text-slate-300 border-transparent hover:bg-[#2f334d]'}
-        
-        {/* ★ 잠금 상태일 때 스타일 변경 (회색 + 클릭불가 커서) */}
-        ${isLocked ? 'opacity-40 cursor-not-allowed bg-slate-800 border-slate-700 text-slate-500' : ''} 
-      `}
-    >
-      <span className="text-xs opacity-70 mb-1">{label}</span>
-      
-      {/* ★ 잠금 상태면 '이유' 표시, 아니면 '배당률' 표시 */}
-      {isLocked ? (
-        <span className="text-xs font-bold text-red-400">{lockReason}</span>
-      ) : (
-        <span className="font-bold font-mono text-lg">{odds.toFixed(2)}</span>
-      )}
-    </button>
-  );
+  // ★ [수정] 헤더 로고도 footballApi의 함수 사용
+  const headerLogo = selectedTeam ? getTeamBadge(selectedTeam) : "/pl-logo.avif";
 
   return (
-    <div className="bg-[#1e2130] rounded-xl overflow-hidden mb-4 border border-slate-700/50 shadow-xl">
-      {/* (상단 디자인 코드는 기존과 동일하므로 생략하지 않고 전체 포함) */}
-      <div className="px-5 py-3 flex justify-between items-center bg-[#23263a] border-b border-slate-700/50">
-        <div className="flex items-center gap-2">
-           <div className={`w-1 h-3 rounded-full ${currentStatus === 'LIVE' ? 'bg-red-500' : 'bg-emerald-400'}`}></div>
-           <span className="text-slate-300 text-xs font-bold uppercase tracking-wider">Premier League</span>
-        </div>
-        <div className="text-slate-400 text-xs font-mono">
-           {currentStatus === 'LIVE' && <span className="text-red-500 animate-pulse font-bold mr-2">● LIVE</span>}
-           {match.matchTime}
-        </div>
-      </div>
-
-      <div className="p-6 flex items-center justify-between relative">
-        <div className="flex flex-col items-center gap-4 w-1/3">
-          <div className="w-12 h-12 md:w-20 md:h-20 relative drop-shadow-2xl transition-transform hover:scale-110">
-            <img src={match.homeLogo || getTeamBadge(match.homeTeam)} alt={match.homeTeam} className="w-full h-full object-contain" />
+    <div className="max-w-4xl mx-auto w-full pb-20 md:pb-0">
+      
+      {selectedTeam ? (
+        <header className="mb-12 mt-8 relative flex flex-col items-center justify-center gap-6">
+           <div className="relative w-48 h-48 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+             <Image
+               src={headerLogo}
+               alt={selectedTeam}
+               fill
+               className="object-contain"
+               unoptimized // 외부 URL 사용 시 권장
+             />
+           </div>
+           <h1 className="text-5xl md:text-6xl font-black text-white uppercase tracking-tighter text-center drop-shadow-2xl">
+             {selectedTeam}
+           </h1>
+        </header>
+      ) : (
+        <header className="mb-8 mt-6 flex items-center gap-4">
+          <div className="relative w-12 h-12 shadow-lg rounded-full overflow-hidden border-2 border-slate-700 bg-[#1a1d26]">
+            <Image src="/pl-logo.avif" alt="Logo" fill className="object-cover" />
           </div>
-          <span className="text-white font-bold text-[10px] md:text-sm text-center leading-tight break-words w-full px-1">{match.homeTeam}</span>
-        </div>
-
-        <div className="flex flex-col items-center justify-center w-1/3">
-          {currentStatus === 'UPCOMING' ? (
-             <span className="text-2xl md:text-3xl font-black text-slate-600 italic opacity-50">VS</span>
-          ) : (
-             <div className="flex gap-3 items-center">
-               <span className="text-2xl md:text-4xl font-bold text-white">{liveScore.home}</span>
-               <span className="text-slate-600 text-xl md:text-2xl">:</span>
-               <span className="text-2xl md:text-4xl font-bold text-white">{liveScore.away}</span>
-             </div>
-          )}
-        </div>
-
-        <div className="flex flex-col items-center gap-4 w-1/3">
-          <div className="w-12 h-12 md:w-20 md:h-20 relative drop-shadow-2xl transition-transform hover:scale-110">
-             <img src={match.awayLogo || getTeamBadge(match.awayTeam)} alt={match.awayTeam} className="w-full h-full object-contain" />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black italic text-white flex items-center gap-3 tracking-tight">
+              Hot Matches 
+              <span className="text-[10px] font-bold not-italic bg-slate-700 text-emerald-400 px-2 py-0.5 rounded shadow-sm border border-slate-600">
+                REAL DATA
+              </span>
+            </h1>
+            <p className="text-slate-400 text-xs font-medium mt-1">
+              EPL 실제 경기 일정을 불러옵니다.
+            </p>
           </div>
-          <span className="text-white font-bold text-sm text-[10px] md:text-sm text-center leading-tight break-words w-full px-1">{match.awayTeam}</span>
-        </div>
-      </div>
+        </header>
+      )}
+      
+      <div className="grid gap-4 w-full">
+        {matches.length > 0 ? (
+          matches.map((match: any) => {
+            const homeName = match.homeTeam || match.home || "Home Team";
+            const awayName = match.awayTeam || match.away || "Away Team";
 
-      <div className="p-4 pt-0 flex gap-3">
-        <BettingButton selection="home" odds={liveOdds.home} label="승 (Home)" />
-        <BettingButton selection="draw" odds={liveOdds.draw} label="무 (Draw)" />
-        <BettingButton selection="away" odds={liveOdds.away} label="패 (Away)" />
+            const normalizedMatch = {
+              id: match.id,
+              homeTeam: homeName,
+              awayTeam: awayName,
+              // ★ [수정] 여기서도 getTeamBadge 사용 (웨스트햄 로고 해결됨)
+              homeLogo: match.homeLogo || getTeamBadge(homeName),
+              awayLogo: match.awayLogo || getTeamBadge(awayName),
+              matchTime: match.matchTime || match.time || "00:00",
+              status: match.status || 'UPCOMING',
+              score: match.score || { home: 0, away: 0 },
+              odds: match.odds,
+            };
+
+            return (
+              // @ts-ignore
+              <MatchCard key={match.id} match={normalizedMatch} />
+            );
+          })
+        ) : (
+          <div className="text-center py-20 border-2 border-dashed border-slate-800 rounded-2xl bg-[#1a1d26]/30">
+            <div className="text-5xl mb-4 opacity-30">⚽</div>
+            <p className="text-slate-500 font-bold text-lg">예정된 경기가 없습니다.</p>
+            <Link href="/" className="text-emerald-500 font-bold text-sm hover:underline mt-3 inline-block">
+              전체 목록 보기
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

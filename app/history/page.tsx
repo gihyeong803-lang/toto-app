@@ -5,37 +5,10 @@ import { useHistoryStore } from '@/store/useHistoryStore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-// [추가됨] 팀 로고 URL 매핑 함수
-const getTeamLogo = (teamName: string) => {
-  const name = teamName.toLowerCase();
-  
-  // 주요 EPL 팀 로고 매핑 (공식 리소스 사용)
-  if (name.includes('arsenal')) return 'https://resources.premierleague.com/premierleague/badges/50/t3.png';
-  if (name.includes('aston villa')) return 'https://resources.premierleague.com/premierleague/badges/50/t7.png';
-  if (name.includes('bournemouth')) return 'https://resources.premierleague.com/premierleague/badges/50/t91.png';
-  if (name.includes('brentford')) return 'https://resources.premierleague.com/premierleague/badges/50/t94.png';
-  if (name.includes('brighton')) return 'https://resources.premierleague.com/premierleague/badges/50/t36.png';
-  if (name.includes('burnley')) return 'https://resources.premierleague.com/premierleague/badges/50/t90.png';
-  if (name.includes('chelsea')) return 'https://resources.premierleague.com/premierleague/badges/50/t8.png';
-  if (name.includes('crystal palace')) return 'https://resources.premierleague.com/premierleague/badges/50/t31.png';
-  if (name.includes('everton')) return 'https://resources.premierleague.com/premierleague/badges/50/t11.png';
-  if (name.includes('fulham')) return 'https://resources.premierleague.com/premierleague/badges/50/t54.png';
-  if (name.includes('liverpool')) return 'https://resources.premierleague.com/premierleague/badges/50/t14.png';
-  if (name.includes('luton')) return 'https://resources.premierleague.com/premierleague/badges/50/t102.png';
-  if (name.includes('city')) return 'https://resources.premierleague.com/premierleague/badges/50/t43.png'; // Man City
-  if (name.includes('united')) return 'https://resources.premierleague.com/premierleague/badges/50/t1.png'; // Man Utd
-  if (name.includes('newcastle')) return 'https://resources.premierleague.com/premierleague/badges/50/t4.png';
-  if (name.includes('nottingham')) return 'https://resources.premierleague.com/premierleague/badges/50/t17.png';
-  if (name.includes('sheffield')) return 'https://resources.premierleague.com/premierleague/badges/50/t49.png';
-  if (name.includes('tottenham')) return 'https://resources.premierleague.com/premierleague/badges/50/t6.png';
-  if (name.includes('west ham')) return 'https://resources.premierleague.com/premierleague/badges/50/t21.png';
-  
-  // [해결] 울버햄튼 로고 매핑 추가
-  if (name.includes('wolverhampton') || name.includes('wolves')) return 'https://resources.premierleague.com/premierleague/badges/50/t39.png';
+// ★ [핵심] 이제 여기서 로고 함수를 가져옵니다! (중복 제거)
+import { getTeamBadge } from '@/utils/footballApi';
 
-  // 로고를 못 찾으면 기본 이미지 반환
-  return 'https://www.premierleague.com/resources/rebrand/v7.134.0/i/badge-placeholder.png';
-};
+// ❌ [삭제] 파일 안에 있던 옛날 getTeamLogo 함수는 이제 필요 없습니다.
 
 export default function HistoryPage() {
   const { user } = useAuthStore();
@@ -151,14 +124,13 @@ export default function HistoryPage() {
                   {bet.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between items-center bg-[#1a1d26] p-3 rounded-xl border border-slate-800/50 hover:border-slate-700 transition-colors">
                       <div className="flex items-center gap-3">
-                        {/* [수정됨] 팀 로고 이미지 추가 */}
+                        {/* [수정됨] 중앙화된 로고 함수 사용 */}
                         <img 
-                          src={getTeamLogo(item.teamName)} 
+                          src={getTeamBadge(item.teamName)} 
                           alt={item.teamName} 
-                          className="w-8 h-8 object-contain" // 이미지 크기 조절
+                          className="w-8 h-8 object-contain"
                           onError={(e) => {
-                            // 이미지 로드 실패 시 기본 이미지로 대체
-                            (e.target as HTMLImageElement).src = 'https://www.premierleague.com/resources/rebrand/v7.134.0/i/badge-placeholder.png';
+                            (e.target as HTMLImageElement).src = 'https://assets.codepen.io/t-1/premier-league-logo.png';
                           }}
                         />
                         <div className="flex flex-col">

@@ -266,12 +266,20 @@ const generateMockOdds = (homeName, awayName, homeScore = 0, awayScore = 0) => {
 
 
 // --- [데이터 동기화] ---
+// server.js 내부의 fetchFixtures 함수 교체
+
 const fetchFixtures = async () => {
     try {
         console.log('[System] 경기 데이터 동기화 중...');
         const today = new Date();
-        const dateFrom = new Date(today); dateFrom.setDate(today.getDate() - 1);
-        const dateTo = new Date(today); dateTo.setDate(today.getDate() + 14);
+        
+        // ★ [핵심 수정] 과거 조회 범위를 1일 전 -> 3일 전으로 변경!
+        // 서버가 며칠 꺼져있었더라도, 깨어났을 때 3일 전 경기까지 다시 확인해서 결과를 반영함.
+        const dateFrom = new Date(today); 
+        dateFrom.setDate(today.getDate() - 3); 
+        
+        const dateTo = new Date(today); 
+        dateTo.setDate(today.getDate() + 14); // 미래 14일
 
         const response = await axios.get(`${BASE_URL}/competitions/${LEAGUE_CODE}/matches`, {
             headers: { 'X-Auth-Token': API_KEY },
@@ -285,25 +293,18 @@ const fetchFixtures = async () => {
         if (!apiMatches) return;
 
         for (const apiMatch of apiMatches) {
+            // 이미 정산 완료된(Settled) 경기는 건너뛰기 (DB 부하 줄이기)
             const existingMatch = await Match.findOne({ id: apiMatch.id });
             if (existingMatch && existingMatch.isSettled) continue;
 
             const homeScore = apiMatch.score.fullTime.home ?? 0;
             const awayScore = apiMatch.score.fullTime.away ?? 0;
 
-            // ==================================================================
-            // ★ [최종 해결] 서버 환경 무시하고 강제로 한국 시간(KST) 만들기
-            // ==================================================================
-            
-            // 1. API가 준 원본 시간 (UTC)
+            // 한국 시간 변환 로직 (기존 유지)
             const originDate = new Date(apiMatch.utcDate);
-            
-            // 2. 9시간(밀리초)을 더함: 영국 시간이든 미국 시간이든 상관없이 한국 시간 숫자가 됨
             const KST_OFFSET = 9 * 60 * 60 * 1000;
             const kstDate = new Date(originDate.getTime() + KST_OFFSET);
 
-            // 3. 변조된 시간에서 숫자 추출 (반드시 getUTC 메서드 사용)
-            // (이미 9시간을 더했으므로 UTC 메서드로 뽑아야 한국 시간이 나옴)
             const month = (kstDate.getUTCMonth() + 1).toString().padStart(2, '0');
             const day = kstDate.getUTCDate().toString().padStart(2, '0');
             const hour = kstDate.getUTCHours().toString().padStart(2, '0');
@@ -311,50 +312,30 @@ const fetchFixtures = async () => {
             const second = kstDate.getUTCSeconds().toString().padStart(2, '0');
             const year = kstDate.getUTCFullYear();
 
-            // 4. 프론트엔드가 원하는 "MM. DD. HH:mm" 형식으로 조립
-            // 결과 예시: "11. 30. 23:05" (한국 시간)
             const formattedMatchTime = `${month}. ${day}. ${hour}:${minute}`;
             
-            // 5. DB 저장용 추가 필드
-            const kstDateString = `${year}. ${month}. ${day}.`;
-            const kstTimeString = `${hour}:${minute}:${second}`;
-
             const matchData = {
                 id: apiMatch.id,
                 league: 'Premier League',
                 home: apiMatch.homeTeam.name,
                 away: apiMatch.awayTeam.name,
-                
-                // ★ 강제로 만들어낸 한국 시간이 저장됩니다.
-                matchTime: formattedMatchTime, 
-                
-                date: kstDateString,
-                time: kstTimeString,
-                
+                matchTime: formattedMatchTime,
+                date: `${year}. ${month}. ${day}.`,
+                time: `${hour}:${minute}:${second}`,
                 status: apiMatch.status,
                 score: { home: homeScore, away: awayScore },
-                odds: generateMockOdds(
-                    apiMatch.homeTeam.name, 
-                    apiMatch.awayTeam.name,
-                    homeScore,
-                    awayScore
-                )
+                // 배당률은 기존 값이 있으면 유지, 없으면 새로 생성 (배당 변동 방지)
+                odds: existingMatch?.odds || generateMockOdds(apiMatch.homeTeam.name, apiMatch.awayTeam.name, homeScore, awayScore)
             };
 
             await Match.findOneAndUpdate({ id: apiMatch.id }, matchData, { upsert: true, new: true });
             
-           
-            
+            // 경기가 끝났으면(FINISHED) 정산 로직 실행
             if (apiMatch.status === 'FINISHED') {
-                console.log(`⚡ [자동 정산] ${apiMatch.homeTeam.name} vs ${apiMatch.awayTeam.name} 경기 종료 감지!`);
                 await settleMatchLogic(apiMatch.id, homeScore, awayScore);
             }
-            
         }
-        console.log(`[System] 경기 데이터 업데이트 완료.`);
-    } catch (error) {
-        console.error('[Error] API Fetch:', error.message);
-    }
+    } catch (error) { console.error('[Error] API Fetch:', error.message); }
 };
 
 // ==================================================================
@@ -637,29 +618,54 @@ app.post('/api/bet', async (req, res) => {
         const user = await User.findOne({ userid });
         if (!user || user.money < betAmount) return res.json({ success: false, message: '잔액 부족' });
 
-        const matchIdToCheck = ticket.matchId || (ticket.items && ticket.items[0].matchId);
-        const matchInfo = await Match.findOne({ id: matchIdToCheck });
+        // ==================================================================
+        // 1. [검증 대상 추출] 이번 요청에 포함된 '모든' 경기 ID를 뽑아냅니다.
+        // ==================================================================
+        let targetMatchIds = [];
+        let firstMatchId = 0; // 대표 경기 ID (시간 체크용)
 
-        // 1. 경기 정보가 없을 때 튕겨내는 로직
+        if (ticket.items && ticket.items.length > 0) {
+            // 다폴더(2-fold 이상): 모든 항목의 matchId를 배열로 추출
+            targetMatchIds = ticket.items.map(item => item.matchId);
+            firstMatchId = ticket.items[0].matchId;
+        } else {
+            // 단폴더: matchId 하나만
+            targetMatchIds = [ticket.matchId];
+            firstMatchId = ticket.matchId;
+        }
+
+        // ==================================================================
+        // 2. [중복 베팅 검사] DB 쿼리 업그레이드
+        // "내 아이디로 된 베팅 중, matchId나 items 안에 targetMatchIds가 하나라도 겹치는게 있니?"
+        // ==================================================================
+        const duplicateBet = await Bet.findOne({
+            userId: userid,
+            $or: [
+                { matchId: { $in: targetMatchIds } },       // 단폴더 이력과 겹치는지
+                { "items.matchId": { $in: targetMatchIds } } // 다폴더 이력의 세부 항목과 겹치는지
+            ]
+        });
+
+        if (duplicateBet) {
+            return res.json({ success: false, message: '이미 배팅한 경기가 포함되어 있습니다.' });
+        }
+        // ==================================================================
+
+        // 3. 시간 체크 (대표 경기 하나만 체크하거나, 필요하면 전체 체크로 확장 가능)
+        // 여기서는 가장 첫 번째 경기를 기준으로 체크합니다.
+        const matchInfo = await Match.findOne({ id: firstMatchId });
+
         if (!matchInfo) {
             return res.json({ success: false, message: '경기 정보를 찾을 수 없습니다.' });
         }
 
-        // ==================================================================
-        // ★ [수정됨] isLive 변수 선언을 여기로 꺼냈습니다! (위치 변경)
-        // ==================================================================
         const LIVE_STATUSES = ['LIVE', 'IN_PLAY', 'PAUSED'];
         const isLive = LIVE_STATUSES.includes(matchInfo.status); 
-        // ==================================================================
 
-        // 디버깅 정보를 담을 변수
-        let debugInfo = {};
-
-        // 라이브가 아닐 때만(!isLive) 시간 체크 수행
         if (!isLive) {
             const now = new Date();
             const utcNow = now.getTime(); 
-            const kstNowVal = utcNow + (9 * 60 * 60 * 1000); // 한국 시간
+            const kstNowVal = utcNow + (9 * 60 * 60 * 1000); 
 
             const parts = matchInfo.matchTime.match(/\d+/g);
             let matchTimeVal = 0;
@@ -676,36 +682,25 @@ app.post('/api/bet', async (req, res) => {
             const diffMs = matchTimeVal - kstNowVal;
             const minutesRemaining = Math.floor(diffMs / (1000 * 60));
 
-            debugInfo = {
-                경기이름: `${matchInfo.home} vs ${matchInfo.away}`,
-                남은시간_분: minutesRemaining,
-                차단기준: "15분 이하"
-            };
-
             if (minutesRemaining <= 15) {
                 return res.json({ 
                     success: false, 
-                    message: `경기 시작 ${minutesRemaining}분 전입니다. 베팅이 마감되었습니다.`,
-                    debug: debugInfo
+                    message: `경기 시작 ${minutesRemaining}분 전입니다. 베팅이 마감되었습니다.`
                 });
             }
         }
 
         const matchName = matchInfo ? `${matchInfo.home} vs ${matchInfo.away}` : 'Unknown';
 
-        // 중복 배팅 체크
-        if (await Bet.findOne({ userId: userid, matchId: matchIdToCheck })) {
-            return res.json({ success: false, message: '이미 배팅한 경기입니다.' });
-        }
-
+        // 결제 및 저장
         user.money -= betAmount;
         await user.save();
 
         await new Bet({
             userId: userid,
-            matchId: ticket.matchId,
-            pick: ticket.pick,
-            items: ticket.items,
+            matchId: ticket.matchId, // 단폴더일 때 사용
+            pick: ticket.pick,       // 단폴더일 때 사용
+            items: ticket.items,     // 다폴더일 때 사용
             stake: betAmount,
             odds: ticket.odds,
             matchName: matchName
@@ -718,6 +713,7 @@ app.post('/api/bet', async (req, res) => {
         res.status(500).json({ success: false, message: e.message }); 
     }
 });
+
 // [보안 패치] 배팅 내역 조회 (아이디 없으면 빈 목록 반환)
 app.get('/api/my-bets', async (req, res) => {
     const requestUserId = req.query.userid || req.query.userId;
